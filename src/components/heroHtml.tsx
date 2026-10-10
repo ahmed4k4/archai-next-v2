@@ -2,6 +2,7 @@
 export const heroHtml = ({ T, esc, titleAr, titleEn, desc, count }) => `<section class="hero" id="hero" aria-label="Hero">
       <div class="hero-bg" aria-hidden="true">
         <div class="hero-grid-lines"></div>
+        <div class="hero-3d-mount" id="hero3dMount" aria-hidden="true"></div>
         <div class="hero-orb hero-orb-1"></div>
         <div class="hero-orb hero-orb-2"></div>
         <div class="hero-orb hero-orb-3"></div>

@@ -1,5 +1,6 @@
 import { heroHtml } from "./heroHtml";
 import HeroParticles from "./HeroParticles";
+import Hero3DPortal from "./Hero3DPortal";
 import { tr, pick } from "../lib/i18n";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => "&#" + c.charCodeAt(0) + ";");
@@ -20,6 +21,7 @@ export default function Hero({ lang, settings, count }: HeroProps) {
     <>
       <div dangerouslySetInnerHTML={{ __html: html }} />
       <HeroParticles />
+      <Hero3DPortal />
     </>
   );
 }

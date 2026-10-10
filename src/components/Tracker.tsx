@@ -53,7 +53,10 @@ async function track(pathname, projectId) {
         }
       } catch { type = "other"; }
     }
-    await client().rpc("track_visit", {
+    // This project does not ship generated Supabase Database types. Without a schema
+    // generic, Supabase infers RPC names/args as `never`; narrow the RPC boundary here.
+    const rpcClient = client() as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error?: unknown }> };
+    const { error } = await rpcClient.rpc("track_visit", {
       p_session: sessionId(),
       p_page: pathname.slice(0, 60),
       p_device: device,
@@ -63,6 +66,7 @@ async function track(pathname, projectId) {
       p_referrer_type: type,
       p_project: projectId || null,
     });
+    if (error) console.warn("track_visit RPC failed:", error);
   } catch (e) {
     console.warn("track", e);
   }

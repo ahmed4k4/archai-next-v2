@@ -220,3 +220,4 @@
 /* ---------- Scrollbar ---------- */
 :root[data-theme="light"] { scrollbar-color: #c4c6da transparent; }
 :root[data-theme="light"] ::-webkit-scrollbar-thumb { background: #c4c6da; border-radius: 99px; }
+

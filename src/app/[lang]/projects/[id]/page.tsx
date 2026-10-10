@@ -4,6 +4,7 @@ import Gallery from "../../../../components/Gallery";
 import ProjectCard from "../../../../components/ProjectCard";
 import { getHome, getProject } from "../../../../lib/data";
 import { LOCALES, pick, tr, safeUrl } from "../../../../lib/i18n";
+import { SITE_URL } from "../../../../lib/supabase";
 
 export const revalidate = 60;
 
@@ -17,14 +18,15 @@ export async function generateMetadata({ params }) {
   const p = await getProject(id);
   if (!p) return {};
   const title = pick(p, "title", lang);
-  const description = pick(p, "summary", lang);
+  const description = pick(p, "summary", lang) || (lang === "ar" ? `تفاصيل مشروع ${title} من أعمال Archai Solutions.` : `Project details for ${title}, built by Archai Solutions.`);
   const image = p.cover_image || p.featured_image;
+  const canonical = `${SITE_URL}/${lang}/projects/${id}`;
   return {
     title,
     description,
-    openGraph: { title, description, images: image ? [image] : undefined },
-    twitter: { card: "summary_large_image" },
-    alternates: { languages: { ar: `/ar/projects/${id}`, en: `/en/projects/${id}` } },
+    alternates: { canonical, languages: { ar: `${SITE_URL}/ar/projects/${id}`, en: `${SITE_URL}/en/projects/${id}` } },
+    openGraph: { title: `${title} | Archai Solutions`, description, url: canonical, siteName: "Archai Solutions", type: "article", images: image ? [{ url: image, alt: title }] : undefined },
+    twitter: { card: "summary_large_image", title: `${title} | Archai Solutions`, description, images: image ? [image] : undefined },
   };
 }
 
@@ -61,8 +63,31 @@ export default async function ProjectPage({ params }) {
   ) : null;
   const chips = (a) => (a.length ? a.map((x) => <span className="badge" key={x}>{x}</span>) : "—");
 
+  const projectSchema = {
+    "@context": "https://schema.org",
+    "@type": "CreativeWork",
+    name: title,
+    description: pick(p, "summary", lang) || pick(p, "description", lang),
+    url: `${SITE_URL}/${lang}/projects/${id}`,
+    image: p.cover_image || p.featured_image || undefined,
+    inLanguage: lang,
+    keywords: [...tg, ...ins].join(", ") || undefined,
+    creator: { "@type": "Organization", name: "Archai Solutions", url: SITE_URL },
+  };
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: lang === "ar" ? "الرئيسية" : "Home", item: `${SITE_URL}/${lang}` },
+      ...(p.categories ? [{ "@type": "ListItem", position: 2, name: catName, item: `${SITE_URL}/${lang}/categories/${p.categories.slug}` }] : []),
+      { "@type": "ListItem", position: p.categories ? 3 : 2, name: title, item: `${SITE_URL}/${lang}/projects/${id}` },
+    ],
+  };
+
   return (
     <main className="wrap">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(projectSchema).replace(/</g, "\\u003c") }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c") }} />
       <nav className="crumb reveal" aria-label="Breadcrumb">
         <Link href={`/${lang}`}>{T("home")}</Link> <span aria-hidden="true">›</span>{" "}
         {p.categories ? (

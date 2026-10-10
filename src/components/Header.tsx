@@ -36,7 +36,12 @@ export default function Header({ lang, cats }: HeaderProps) {
             </div>
           </details>
         ) : null}
-        <Link className="btn" href={`/${lang}#list`}>{T("projects")}</Link>
+        <nav className="company-nav" aria-label={T("company")}>
+          <Link href={`/${lang}/services`}>{T("services")}</Link>
+          <Link href={`/${lang}/industries`}>{T("industries")}</Link>
+          <Link href={`/${lang}#list`}>{T("projects")}</Link>
+          <details className="company-menu"><summary>{T("company")} <i>▾</i></summary><div className="company-menu-pop"><Link href={`/${lang}/services`}>{T("services")}</Link><Link href={`/${lang}/industries`}>{T("industries")}</Link><Link href={`/${lang}/about`}>{T("about")}</Link><Link href={`/${lang}/process`}>{T("process")}</Link><Link href={`/${lang}/insights`}>{T("insights")}</Link><Link href={`/${lang}/case-studies`}>{lang === "ar" ? "دراسات الحالة" : "Case studies"}</Link><Link href={`/${lang}/careers`}>{lang === "ar" ? "الوظائف" : "Careers"}</Link><Link href={`/${lang}/faq`}>{lang === "ar" ? "الأسئلة الشائعة" : "FAQ"}</Link><Link href={`/${lang}/contact`}>{T("contact")}</Link></div></details>
+        </nav>
         <Link
           className="btn"
           id="lang"

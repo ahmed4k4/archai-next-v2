@@ -2115,3 +2115,39 @@ section[id] {
 }
 
 .pg > aside::before { display: none; }
+
+/* ARCHAI MOTION SYSTEM — shared across marketing and dashboard */
+:root { --motion-fast: 220ms; --motion-medium: 520ms; --motion-slow: 1.1s; }
+@keyframes archaiRise { from { opacity:0; transform:translate3d(0,24px,0) scale(.985) } to { opacity:1; transform:translate3d(0,0,0) scale(1) } }
+@keyframes archaiShimmer { 0% { background-position: -180% 0 } 100% { background-position: 180% 0 } }
+@keyframes archaiPulse { 0%,100% { transform:scale(1); opacity:.55 } 50% { transform:scale(1.13); opacity:.9 } }
+@keyframes archaiOrbit { from { transform:rotateX(65deg) rotateZ(0deg) } to { transform:rotateX(65deg) rotateZ(360deg) } }
+@keyframes archaiOrbitReverse { from { transform:rotateX(68deg) rotateZ(360deg) } to { transform:rotateX(68deg) rotateZ(0deg) } }
+@keyframes archaiFloat { 0%,100% { translate:0 0; rotate:0deg } 50% { translate:0 -17px; rotate:4deg } }
+@keyframes archaiScan { 0% { transform:translateY(-120%); opacity:0 } 15%,80% { opacity:.65 } 100% { transform:translateY(360%); opacity:0 } }
+@keyframes archaiSpin3d { from { transform:rotateX(0) rotateY(0) rotateZ(0) } to { transform:rotateX(360deg) rotateY(720deg) rotateZ(360deg) } }
+.marketing-visual { perspective:1100px; transform-style:preserve-3d; }
+.visual-core { transform-style:preserve-3d; animation:archaiFloat 6.5s ease-in-out infinite; }
+.visual-core .core-inner { box-shadow:0 0 0 1px rgba(255,255,255,.18),0 22px 75px rgba(119,77,255,.28),inset 0 1px 0 rgba(255,255,255,.4); transform:translateZ(38px); }
+.visual-orbit { transform-style:preserve-3d; backface-visibility:visible; }
+.orbit-one { animation:archaiOrbit 19s linear infinite; }
+.orbit-two { animation:archaiOrbitReverse 26s linear infinite; }
+.orbit-three { animation:archaiOrbit 34s linear infinite; }
+.visual-chip { animation:archaiFloat 5s ease-in-out infinite; box-shadow:0 18px 45px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.18); }
+.chip-two { animation-delay:-1.7s; } .chip-three { animation-delay:-3.1s; }
+.marketing-hero-grid { mask-image:linear-gradient(to bottom,#000,transparent 88%); }
+.marketing-card { animation:archaiRise .65s both; transform-style:preserve-3d; }
+.marketing-card:hover { transform:translateY(-8px) rotateX(1.2deg); }
+.marketing-card::after { content:""; position:absolute; top:0; left:-120%; width:65%; height:100%; pointer-events:none; background:linear-gradient(100deg,transparent,rgba(255,255,255,.08),transparent); transform:skewX(-16deg); }
+.marketing-card:hover::after { animation:archaiShimmer 1s ease; }
+.marketing-cta { isolation:isolate; }
+.cta-orb { animation:archaiPulse 7s ease-in-out infinite; filter:blur(1px); }
+.ambient-prism { position:absolute; width:72px; height:72px; border:1px solid rgba(139,120,255,.38); background:linear-gradient(135deg,rgba(139,120,255,.11),rgba(45,212,191,.06)); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); transform-style:preserve-3d; animation:archaiSpin3d 24s linear infinite; }
+.ambient-prism-a { top:21%; right:17%; }
+.ambient-prism-b { bottom:14%; left:13%; width:44px;height:44px; animation-duration:31s; animation-direction:reverse; }
+.ambient-ring { position:absolute; width:190px;height:70px;border:1px solid rgba(45,212,191,.25);border-radius:50%; top:64%;right:12%; transform:rotate(-28deg); animation:archaiOrbit 32s linear infinite; }
+.admin-app .stat-card,.admin-app .quick-grid>a,.admin-app .admin-panel { animation:archaiRise .45s both; }
+.admin-app .stat-card:nth-child(2),.admin-app .quick-grid>a:nth-child(2){animation-delay:55ms}.admin-app .stat-card:nth-child(3),.admin-app .quick-grid>a:nth-child(3){animation-delay:100ms}.admin-app .stat-card:nth-child(4),.admin-app .quick-grid>a:nth-child(4){animation-delay:145ms}
+.admin-app .admin-primary,.admin-app .admin-tool-button { transition:transform .22s ease,box-shadow .22s ease,background .22s ease; }
+.admin-app .admin-primary:hover,.admin-app .admin-tool-button:hover { transform:translateY(-2px); }
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-iteration-count:1!important; scroll-behavior:auto!important; transition-duration:.01ms!important; } }

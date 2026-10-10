@@ -18,6 +18,12 @@ export default function Footer({ lang, cats }: FooterProps) {
             <Link href={`/${lang}`}>{T("home")}</Link>
             <Link href={`/${lang}#list`}>{T("projects")}</Link>
             <Link href={`/${lang}#sl`}>{T("featT")}</Link>
+            <Link href={`/${lang}/services`}>{T("services")}</Link>
+            <Link href={`/${lang}/industries`}>{T("industries")}</Link>
+            <Link href={`/${lang}/about`}>{T("about")}</Link>
+            <Link href={`/${lang}/process`}>{T("process")}</Link>
+            <Link href={`/${lang}/insights`}>{T("insights")}</Link>
+            <Link href={`/${lang}/contact`}>{T("contact")}</Link>
           </div>
           {cats.length ? (
             <div className="footer-col">

@@ -5,6 +5,7 @@ import Explorer from "../../../../components/Explorer";
 import CategoryCards from "../../../../components/CategoryCards";
 import { getHome } from "../../../../lib/data";
 import { LOCALES, pick, tr } from "../../../../lib/i18n";
+import { SITE_URL } from "../../../../lib/supabase";
 
 export const revalidate = 60;
 
@@ -19,10 +20,14 @@ export async function generateMetadata({ params }) {
   const c = cats.find((x) => x.slug === slug);
   if (!c) return {};
   const desc = pick(c, "description", lang);
+  const title = pick(c, "name", lang);
+  const canonical = `${SITE_URL}/${lang}/categories/${slug}`;
   return {
-    title: pick(c, "name", lang),
-    description: desc || undefined,
-    alternates: { languages: { ar: `/ar/categories/${slug}`, en: `/en/categories/${slug}` } },
+    title,
+    description: desc || (lang === "ar" ? `استكشف مشاريع أركاي في ${title} والتقنيات والحلول المستخدمة.` : `Explore Archai Solutions projects in ${title}, including the technologies and solutions behind them.`),
+    alternates: { canonical, languages: { ar: `${SITE_URL}/ar/categories/${slug}`, en: `${SITE_URL}/en/categories/${slug}` } },
+    openGraph: { title: `${title} | Archai Solutions`, description: desc || title, url: canonical, siteName: "Archai Solutions", type: "website" },
+    twitter: { card: "summary", title: `${title} | Archai Solutions`, description: desc || title },
   };
 }
 
@@ -41,9 +46,18 @@ export default async function CategoryPage({ params }) {
   const others = cats.filter((c) => c.id !== cat.id);
   const name = pick(cat, "name", lang);
   const desc = pick(cat, "description", lang);
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: lang === "ar" ? "الرئيسية" : "Home", item: `${SITE_URL}/${lang}` },
+      { "@type": "ListItem", position: 2, name, item: `${SITE_URL}/${lang}/categories/${slug}` },
+    ],
+  };
 
   return (
     <main className="wrap">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema).replace(/</g, "\\u003c") }} />
       <nav className="crumb reveal" aria-label="Breadcrumb">
         <Link href={`/${lang}`}>{T("home")}</Link> <span aria-hidden="true">›</span> <span>{name}</span>
       </nav>
