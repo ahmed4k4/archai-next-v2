@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect } from "react";
 
 type Particle = {
@@ -12,16 +11,15 @@ type Particle = {
   color: string;
 };
 
-const PALETTE = ["#cbfffc", "#2dd4bf", "#00827c", "#8052ff", "#fde9ff"];
-const reduceMotion = () =>
-  typeof window !== "undefined" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const PALETTE = ["#cbfffc", "#4ce2d0", "#129a8c", "#7c5cff", "#ad97ff", "#fde9ff"];
 
 export default function HeroParticles() {
   useEffect(() => {
     const canvas = document.getElementById("heroParticles") as HTMLCanvasElement | null;
     const context = canvas?.getContext("2d");
-    if (!canvas || !context || reduceMotion()) return;
+    if (!canvas || !context) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let width = 0;
     let height = 0;
@@ -40,19 +38,20 @@ export default function HeroParticles() {
       canvas.height = Math.max(1, Math.floor(height * dpr));
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Fibonacci sphere distribution creates a stable, low-cost 3D orb.
-      const count = window.innerWidth < 640 ? 180 : window.innerWidth < 1024 ? 300 : 440;
+      const count =
+        window.innerWidth < 640 ? 180 : window.innerWidth < 1024 ? 320 : 480;
+
       particles = Array.from({ length: count }, (_, i) => {
         const y = 1 - (i / (count - 1)) * 2;
-        const radius = Math.sqrt(Math.max(0, 1 - y * y));
+        const r = Math.sqrt(Math.max(0, 1 - y * y));
         const theta = Math.PI * (3 - Math.sqrt(5)) * i;
         return {
-          x: Math.cos(theta) * radius,
+          x: Math.cos(theta) * r,
           y,
-          z: Math.sin(theta) * radius,
+          z: Math.sin(theta) * r,
           phase: Math.random() * Math.PI * 2,
           speed: 0.0005 + Math.random() * 0.0012,
-          radius: 0.45 + Math.random() * 1.2,
+          radius: 0.4 + Math.random() * 1.3,
           color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
         };
       });
@@ -66,16 +65,17 @@ export default function HeroParticles() {
       context.clearRect(0, 0, width, height);
       rotation += 0.0022;
       const compact = width < 640;
-      const cx = width * (compact ? 0.72 : 0.72);
+      const cx = width * (compact ? 0.5 : 0.72);
       const cy = height * 0.52;
-      const radius = Math.min(width * (compact ? 0.42 : 0.27), height * 0.43, compact ? 250 : 360);
+      const R = Math.min(width * (compact ? 0.42 : 0.27), height * 0.43, compact ? 250 : 380);
+
       const projected = particles.map((p) => {
         const x = p.x * Math.cos(rotation) - p.z * Math.sin(rotation);
         const z = p.x * Math.sin(rotation) + p.z * Math.cos(rotation);
         const perspective = 1.25 / (1.8 - z * 0.48);
         return {
-          x: cx + x * radius * perspective,
-          y: cy + p.y * radius * perspective,
+          x: cx + x * R * perspective,
+          y: cy + p.y * R * perspective,
           z,
           r: p.radius * perspective,
           color: p.color,
@@ -83,18 +83,19 @@ export default function HeroParticles() {
         };
       });
 
-      // Connect only nearby projected particles; subtle lines imply a living constellation.
       for (let i = 0; i < projected.length; i++) {
         const a = projected[i];
         for (let j = i + 1; j < Math.min(i + 8, projected.length); j++) {
           const b = projected[j];
           const dx = a.x - b.x;
           const dy = a.y - b.y;
-          const distance = Math.hypot(dx, dy);
-          if (distance < radius * 0.2) {
+          const d = Math.hypot(dx, dy);
+          if (d < R * 0.2) {
             context.beginPath();
-            context.strokeStyle = `rgba(45,212,191,${(1 - distance / (radius * 0.2)) * 0.12 * a.alpha})`;
-            context.lineWidth = 0.45;
+            context.strokeStyle = `rgba(124,92,255,${
+              (1 - d / (R * 0.2)) * 0.14 * a.alpha
+            })`;
+            context.lineWidth = 0.5;
             context.moveTo(a.x, a.y);
             context.lineTo(b.x, b.y);
             context.stroke();
@@ -119,6 +120,7 @@ export default function HeroParticles() {
       running = true;
       frame = requestAnimationFrame(draw);
     };
+
     const observer = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
       if (visible) start();
@@ -127,26 +129,34 @@ export default function HeroParticles() {
         cancelAnimationFrame(frame);
       }
     });
-    const onVisibilityChange = () => {
+
+    const onVis = () => {
       if (document.hidden) {
         running = false;
         cancelAnimationFrame(frame);
       } else start();
     };
+
     observer.observe(canvas);
     resize();
     start();
     window.addEventListener("resize", resize, { passive: true });
-    document.addEventListener("visibilitychange", onVisibilityChange);
+    document.addEventListener("visibilitychange", onVis);
 
     return () => {
       running = false;
       cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener("resize", resize);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
 
-  return null;
+  return (
+    <canvas
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      id="heroParticles"
+      aria-hidden
+    />
+  );
 }

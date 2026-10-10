@@ -3,7 +3,7 @@ import { sbServer, configured } from "./supabase";
 import type { Category, Project, SiteSettings } from "./types";
 
 const LIST =
-  "id,slug,category_id,sort_order,title_en,title_ar,summary_en,summary_ar,live_url,cover_image,cover_thumb,featured_image,featured,featured_sort_order,categories(id,name_en,name_ar,active),project_technologies(technology),project_industries(industry)";
+  "id,slug,category_id,sort_order,created_at,updated_at,title_en,title_ar,summary_en,summary_ar,live_url,cover_image,cover_thumb,hero_image,featured_image,featured,featured_sort_order,categories(id,slug,name_en,name_ar,active),project_technologies(technology),project_industries(industry),project_images(public_url,role,sort_order,alt_en,alt_ar)";
 const FULL =
   "*,categories(id,slug,name_en,name_ar,active),project_technologies(technology),project_industries(industry),project_images(id,public_url,alt_en,alt_ar,sort_order,is_hero)";
 
@@ -33,6 +33,7 @@ async function loadHome(): Promise<{ cats: Category[]; projects: Project[]; sett
       ...x,
       project_technologies: arr(x.project_technologies),
       project_industries: arr(x.project_industries),
+      project_images: arr(x.project_images),
     }));
   return { cats, projects, settings: s.data || {}, configured: true };
 }

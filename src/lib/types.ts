@@ -23,6 +23,7 @@ export interface Industry {
 export interface ProjectImage {
   id?: string;
   public_url: string;
+  role?: "cover" | "hero" | "featured" | "gallery" | null;
   alt_ar?: string | null;
   alt_en?: string | null;
   sort_order?: number;
@@ -45,8 +46,11 @@ export interface Project {
   cover_image?: string | null;
   cover_thumb?: string | null;
   featured_image?: string | null;
+  hero_image?: string | null;
   featured?: boolean;
   status?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
   categories?: Category | null;
   project_technologies: Technology[];
   project_industries: Industry[];

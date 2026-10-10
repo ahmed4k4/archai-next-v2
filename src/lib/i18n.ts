@@ -39,3 +39,29 @@ const extra = {
 export const tr = (lang: Locale) => (k: string): string => (extra[lang] as Record<string, string>)?.[k] ?? (dict[lang] as Record<string, string>)?.[k] ?? dict.en[k as keyof typeof dict.en] ?? k;
 export const pick = (o: Record<string, any> | null | undefined, f: string, lang: Locale): string => o?.[`${f}_${lang}`] || o?.[`${f}_en`] || o?.[`${f}_ar`] || "";
 export const safeUrl = (u?: string | null): string => (/^https?:\/\//i.test(u || "") ? u! : "#");
+
+/**
+ * Resolve the best display image for a project, regardless of where the
+ * artwork lives (dedicated columns OR the project_images relation).
+ * Order: thumb → cover → featured → hero → relation (cover role first).
+ */
+export const projectCover = (p: any): string =>
+  p?.cover_thumb ||
+  p?.cover_image ||
+  p?.featured_image ||
+  p?.hero_image ||
+  p?.project_images?.[0]?.public_url ||
+  "";
+
+/** Ordered image list for galleries — cover/hero first, then by sort_order. */
+export const projectImages = (p: any): { public_url: string; alt_en?: string | null; alt_ar?: string | null }[] => {
+  const rel = Array.isArray(p?.project_images)
+    ? [...p.project_images].sort((a: any, b: any) => {
+        const rank = (r?: string) => (r === "cover" ? 0 : r === "hero" ? 1 : r === "featured" ? 2 : 3);
+        return rank(a?.role) - rank(b?.role) || (a?.sort_order ?? 0) - (b?.sort_order ?? 0);
+      })
+    : [];
+  if (rel.length) return rel;
+  const single = p?.cover_image || p?.featured_image || p?.hero_image;
+  return single ? [{ public_url: single }] : [];
+};

@@ -1,12 +1,5 @@
-import "./styles/app.css";
-import "./styles/light.css";
-import "./styles/next.css";
-import "./styles/brand.css";
-import "./styles/admin.css";
-import "./styles/admin-enhancements.css";
-import "./styles/public-polish.css";
-import "./styles/premium-overrides.css";
-import "./styles/motion-system.css";
+import "./styles/globals.css";
+import "./globals.css";
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://archai-website-navy.vercel.app"),

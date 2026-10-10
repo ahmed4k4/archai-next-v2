@@ -1,116 +1,213 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabaseBrowser } from "../../../lib/supabase-browser";
-
-const PARTICLES = Array.from({ length: 34 }, (_, i) => ({
-  left: `${(i * 29) % 100}%`,
-  top: `${(i * 47) % 100}%`,
-  delay: `${(i % 9) * 0.55}s`,
-  duration: `${5 + (i % 7)}s`,
-  size: `${2 + (i % 3)}px`,
-}));
+import { motion } from "framer-motion";
+import { Eye, EyeOff, Shield } from "lucide-react";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 
 export default function AdminLogin() {
+  return (
+    <Suspense fallback={<div className="admin-loading">Loading…</div>}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const sb = supabaseBrowser();
   const router = useRouter();
   const qs = useSearchParams();
+
   const [email, setEmail] = useState("admin@gmail.com");
   const [password, setPassword] = useState("12345678");
-  const [showPassword, setShowPassword] = useState(false);
+  const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [pointer, setPointer] = useState({ x: 50, y: 45 });
 
   const denied = useMemo(() => qs.get("denied") === "1", [qs]);
 
   useEffect(() => {
-    setMounted(true);
     let active = true;
     sb.auth.getSession().then(({ data }) => {
       if (active && data.session) router.replace("/admin");
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [router, sb]);
-
-  function handlePointer(e: React.PointerEvent<HTMLElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setPointer({ x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 });
-  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const { error: authError } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+
+    const { error: authError } = await sb.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
     if (authError) {
-      const msg = authError.message || "تعذر تسجيل الدخول.";
-      if (msg === "Invalid login credentials") setError("بيانات الدخول غير صحيحة. تأكد أن المستخدم موجود في Supabase → Authentication → Users، ثم شغّل 02_make_admin.sql لمنحه صلاحية الأدمن.");
-      else if (msg.toLowerCase().includes("email not confirmed")) setError("البريد الإلكتروني غير مؤكد. افتح Supabase → Authentication → Users وأكّد البريد الإلكتروني، ثم جرّب مرة أخرى.");
+      const msg = authError.message || "Login failed.";
+      if (msg === "Invalid login credentials")
+        setError(
+          "بيانات الدخول غير صحيحة. تأكد أن المستخدم موجود في Supabase → Authentication → Users."
+        );
+      else if (msg.toLowerCase().includes("email not confirmed"))
+        setError("البريد الإلكتروني غير مؤكد. افتح Supabase وأكّد البريد.");
       else setError(`${msg}${authError.code ? ` (${authError.code})` : ""}`);
       setLoading(false);
       return;
     }
+
     router.replace("/admin");
     router.refresh();
   }
 
   return (
-    <main className={`admin-login-pro ${mounted ? "is-ready" : ""}`} dir="rtl" onPointerMove={handlePointer}>
-      <div className="login-grid" aria-hidden="true" />
-      <div className="login-noise" aria-hidden="true" />
-      <div className="login-aurora login-aurora-a" aria-hidden="true" />
-      <div className="login-aurora login-aurora-b" aria-hidden="true" />
-      <div className="login-orbit login-orbit-a" aria-hidden="true" />
-      <div className="login-orbit login-orbit-b" aria-hidden="true" />
-      <div className="login-pointer" aria-hidden="true" style={{ left: `${pointer.x}%`, top: `${pointer.y}%` }} />
-      <div className="login-particles" aria-hidden="true">
-        {PARTICLES.map((p, i) => <i key={i} style={{ left: p.left, top: p.top, width: p.size, height: p.size, animationDelay: p.delay, animationDuration: p.duration }} />)}
-      </div>
+    <main
+      className="relative min-h-screen overflow-hidden bg-void-900 flex items-center justify-center p-6"
+      dir="rtl"
+    >
+      {/* Background layers */}
+      <div className="absolute inset-0 grid-floor opacity-40" />
+      <motion.div
+        className="absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full blur-[140px] opacity-25"
+        style={{ background: "radial-gradient(circle, #7c5cff 0%, transparent 70%)" }}
+        animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute bottom-[-20%] left-[-10%] w-[55vw] h-[55vw] rounded-full blur-[140px] opacity-20"
+        style={{ background: "radial-gradient(circle, #4ce2d0 0%, transparent 70%)" }}
+        animate={{ x: [0, -40, 0], y: [0, 30, 0] }}
+        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+      />
 
-      <section className="login-stage">
-        <div className="login-brandline">
-          <div className="login-brandmark"><img src="/assets/logo.png" alt="Archai" /><span>ARCHAI</span></div>
-          <span className="login-status"><b /> SYSTEM ONLINE</span>
-        </div>
-
-        <div className="login-layout">
-          <div className="login-copy">
-            <span className="login-eyebrow">PROJECT INTELLIGENCE / 01</span>
-            <h1>إدارة المشاريع<br /><em>بشكل أذكى.</em></h1>
-            <p>مساحة التحكم الخاصة بـ Archai لإدارة المشاريع، المحتوى، الأقسام والإحصائيات من مكان واحد.</p>
-            <div className="login-metrics">
-              <span><b>01</b><small>CONTROL</small></span>
-              <span><b>∞</b><small>PROJECTS</small></span>
-              <span><b>24/7</b><small>ACCESS</small></span>
+      <div className="relative w-full max-w-md">
+        {/* Brand line */}
+        <motion.div
+          className="flex items-center justify-between mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="flex items-center gap-3">
+            <img
+              src="/assets/logo.png"
+              alt="Archai"
+              className="w-10 h-10 object-contain"
+            />
+            <div className="font-mono text-xs font-bold tracking-[0.25em] text-white">
+              ARCHAI
             </div>
           </div>
+          <div className="flex items-center gap-2 text-mint-400 text-[10px] font-mono tracking-widest">
+            <motion.span
+              className="w-1.5 h-1.5 rounded-full bg-mint-400"
+              animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
+              transition={{ duration: 1.8, repeat: Infinity }}
+            />
+            SECURE ACCESS
+          </div>
+        </motion.div>
 
-          <form className="login-card-pro" onSubmit={submit}>
-            <div className="login-card-glow" aria-hidden="true" />
-            <div className="login-card-head">
-              <div><span>SECURE ACCESS</span><h2>مرحبًا بك</h2></div>
-              <div className="login-lock" aria-hidden="true">✦</div>
-            </div>
-            {denied && <div className="admin-error login-alert">هذا الحساب ليس لديه صلاحية Admin.</div>}
-            {error && <div className="admin-error login-alert">{error}</div>}
-            <label>البريد الإلكتروني
-              <div className="login-input-wrap"><span>◉</span><input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="username" /></div>
+        {/* Card */}
+        <motion.form
+          onSubmit={submit}
+          className="relative p-8 rounded-3xl border border-violet-500/25 bg-void-800/85 backdrop-blur-2xl shadow-[0_40px_100px_rgba(0,0,0,0.5)] overflow-hidden"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1 }}
+        >
+          {/* Corner glow */}
+          <div className="absolute top-0 right-0 w-40 h-40 bg-violet-500/20 blur-3xl rounded-full pointer-events-none" />
+
+          <div className="relative">
+            <span className="font-mono text-[10px] tracking-widest text-mint-300">
+              SECURE ACCESS
+            </span>
+            <h2 className="mt-2 font-display text-3xl font-medium text-white">
+              مرحبًا بك
+            </h2>
+            <p className="mt-2 text-sm text-ink-3">
+              سجّل الدخول للوصول إلى لوحة التحكم.
+            </p>
+
+            {denied && (
+              <div className="mt-5 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+                هذا الحساب ليس لديه صلاحية Admin.
+              </div>
+            )}
+            {error && (
+              <div className="mt-5 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs leading-relaxed">
+                {error}
+              </div>
+            )}
+
+            {/* Email */}
+            <label className="block mt-6">
+              <span className="text-xs text-ink-3">البريد الإلكتروني</span>
+              <div className="mt-2 flex items-center gap-2 px-3 py-3 rounded-xl bg-black/40 border border-violet-500/20 focus-within:border-violet-500/60 transition-colors">
+                <span className="text-violet-300 text-xs">◉</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="username"
+                  className="flex-1 bg-transparent border-0 outline-0 text-white text-sm placeholder:text-ink-4"
+                />
+              </div>
             </label>
-            <label>كلمة المرور
-              <div className="login-input-wrap"><span>◆</span><input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password" /><button type="button" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}>{showPassword ? "◉" : "○"}</button></div>
+
+            {/* Password */}
+            <label className="block mt-4">
+              <span className="text-xs text-ink-3">كلمة المرور</span>
+              <div className="mt-2 flex items-center gap-2 px-3 py-3 rounded-xl bg-black/40 border border-violet-500/20 focus-within:border-violet-500/60 transition-colors">
+                <span className="text-violet-300 text-xs">◆</span>
+                <input
+                  type={show ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="flex-1 bg-transparent border-0 outline-0 text-white text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShow((v) => !v)}
+                  aria-label={show ? "إخفاء" : "إظهار"}
+                  className="text-ink-3 hover:text-violet-300 transition-colors"
+                >
+                  {show ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
-            <button className="login-submit" disabled={loading}>
-              <span>{loading ? "جاري التحقق…" : "دخول لوحة التحكم"}</span><b>{loading ? "…" : "↗"}</b>
+
+            {/* Submit */}
+            <button
+              className="mt-6 w-full inline-flex items-center justify-between gap-3 px-5 py-3.5 rounded-xl bg-grad-cta text-white font-bold text-sm shadow-glow-violet hover:shadow-glow-violet-lg hover:-translate-y-0.5 transition-all disabled:opacity-60"
+              disabled={loading}
+            >
+              <span>{loading ? "جاري التحقق…" : "دخول لوحة التحكم"}</span>
+              <span className="text-lg">{loading ? "…" : "↗"}</span>
             </button>
-            <div className="login-security"><span>●</span> اتصال آمن عبر Supabase Auth <span className="line" /></div>
-          </form>
-        </div>
 
-        <div className="login-footer"><span>ARCHAI INTEGRATED SYSTEMS</span><span>CONTROL CENTER · v2.0</span></div>
-      </section>
+            {/* Security note */}
+            <div className="mt-5 flex items-center gap-2 text-[10px] font-mono text-ink-4">
+              <Shield size={12} className="text-mint-400" />
+              اتصال آمن عبر Supabase Auth
+              <span className="flex-1 h-px bg-gradient-to-r from-violet-500/30 to-transparent" />
+            </div>
+          </div>
+        </motion.form>
+
+        {/* Footer */}
+        <div className="mt-8 flex justify-between text-[9px] font-mono text-ink-4 tracking-widest">
+          <span>ARCHAI INTEGRATED SYSTEMS</span>
+          <span>CONTROL CENTER · v3.0</span>
+        </div>
+      </div>
     </main>
   );
 }
