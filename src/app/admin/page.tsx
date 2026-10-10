@@ -1,0 +1,8 @@
+"use client";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabaseBrowser } from "../../lib/supabase-browser";
+
+export default function AdminHome(){const sb=supabaseBrowser();const [stats,setStats]=useState({total_projects:0,published_projects:0,featured_projects:0,sessions:0,project_views:0});const [loading,setLoading]=useState(true);
+ useEffect(()=>{sb.rpc("admin_overview").then(({data,error})=>{if(!error&&data)setStats(data);setLoading(false);});},[sb]);
+ return <><div className="admin-page-head"><div><span className="admin-kicker">OVERVIEW</span><h2>لوحة التحكم</h2><p>نظرة سريعة على محتوى الموقع وأداء المشاريع.</p></div><Link className="admin-primary" href="/admin/projects?new=1">+ مشروع جديد</Link></div><div className="stat-grid">{[["إجمالي المشاريع",stats.total_projects,"projects"],["المشاريع المنشورة",stats.published_projects,"published"],["المشاريع المميزة",stats.featured_projects,"featured"],["زيارات المشاريع",stats.project_views,"views"]].map(([l,v,k])=><div className="stat-card" key={k}><span>{l}</span><strong>{loading?"—":String(v)}</strong></div>)}</div><div className="admin-panel"><div><span className="admin-kicker">CONTENT</span><h3>إدارة المحتوى</h3></div><div className="quick-grid"><Link href="/admin/projects"><strong>المشاريع</strong><span>إضافة وتعديل ونشر المشاريع</span></Link><Link href="/admin/categories"><strong>الأقسام</strong><span>تنظيم Web / Embedded / Mobile وغيرها</span></Link><Link href="/admin/settings"><strong>الإعدادات</strong><span>العنوان والوصف وإعدادات الصفحة الرئيسية</span></Link><Link href="/admin/analytics"><strong>الإحصائيات</strong><span>المشاهدات والزوار ومصادر الزيارات</span></Link></div></div></>}

@@ -1,0 +1,75 @@
+/* ============================================================
+   next.css — styles for the Next.js pages (categories, page headers, menus)
+   Uses the existing design tokens (variables.css)
+   ============================================================ */
+.notice{margin:var(--sp-6) 0;padding:var(--sp-5);border:1px dashed var(--line-amber);border-radius:var(--r-lg);background:var(--bg-2);color:var(--ink-1)}
+.notice p{margin:.4rem 0 0;color:var(--ink-3)}
+.subline{margin:-.4rem 0 var(--sp-5);color:var(--ink-3);font-size:var(--fs-lg)}
+.catsec{margin-top:var(--sp-7)}
+
+/* ---------- category cards ---------- */
+.catgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:var(--sp-4)}
+.catcard{position:relative;display:flex;flex-direction:column;gap:.55rem;padding:var(--sp-5);border-radius:var(--r-xl);background:var(--bg-2);border:1px solid var(--line-2);overflow:hidden;isolation:isolate;transition:transform var(--dur-base) var(--ease-spring),border-color var(--dur-base),box-shadow var(--dur-base)}
+.catcard::before{content:"";position:absolute;inset:-40% -30% auto auto;width:70%;aspect-ratio:1;border-radius:50%;background:var(--grad-primary);opacity:.12;filter:blur(30px);z-index:-1;transition:opacity var(--dur-base),transform var(--dur-slow) var(--ease-out)}
+.catcard:nth-child(3n+2)::before{background:var(--grad-teal)}
+.catcard:nth-child(3n+3)::before{background:linear-gradient(135deg,#a78bfa,#fb7185)}
+.catcard:hover{transform:translateY(-6px);border-color:var(--line-amber);box-shadow:var(--lift-4)}
+.catcard:hover::before{opacity:.32;transform:scale(1.25)}
+.catcard-ic{display:grid;place-items:center;width:52px;height:52px;border-radius:var(--r-md);background:var(--bg-3);border:1px solid var(--line-2);font-size:1.5rem}
+.catcard-name{font-family:var(--font-display);font-style:italic;font-size:var(--fs-xl);font-weight:600;color:var(--ink-0);line-height:1.2}
+.catcard-desc{color:var(--ink-3);font-size:var(--fs-sm);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.9em}
+.catcard-foot{margin-top:auto;padding-top:.6rem;color:var(--ink-2);font-size:var(--fs-sm);display:flex;align-items:center;gap:.35rem}
+.catcard-foot b{color:var(--amber-molten);font-size:var(--fs-lg)}
+.catcard-foot i{margin-inline-start:auto;font-style:normal;transition:transform var(--dur-base) var(--ease-spring)}
+.catcard:hover .catcard-foot i{transform:translateX(5px)}
+[dir="rtl"] .catcard:hover .catcard-foot i{transform:translateX(-5px)}
+
+/* ---------- category page header ---------- */
+.cathero{position:relative;display:flex;align-items:center;gap:var(--sp-5);margin:var(--sp-4) 0 var(--sp-6);padding:var(--sp-6) var(--sp-6);border-radius:var(--r-2xl);background:var(--bg-2);border:1px solid var(--line-2);overflow:hidden;isolation:isolate}
+.cathero::before{content:"";position:absolute;inset:-60% auto auto -10%;width:60%;aspect-ratio:1;border-radius:50%;background:var(--grad-primary);opacity:.16;filter:blur(60px);z-index:-1}
+.cathero::after{content:"";position:absolute;inset:auto -10% -70% auto;width:55%;aspect-ratio:1;border-radius:50%;background:var(--grad-teal);opacity:.14;filter:blur(60px);z-index:-1}
+.cathero-ic{display:grid;place-items:center;flex:none;width:84px;height:84px;border-radius:var(--r-xl);background:var(--bg-3);border:1px solid var(--line-2);font-size:2.4rem;box-shadow:var(--lift-3)}
+.cathero-tx{flex:1;min-width:0}
+.eyebrow{display:inline-block;margin-bottom:.4rem;font-family:var(--font-mono);font-size:var(--fs-xs);letter-spacing:.14em;text-transform:uppercase;color:var(--amber-molten)}
+.cathero h1{margin:0;font-family:var(--font-display);font-style:italic;font-weight:600;font-size:var(--fs-3xl);line-height:1.1;letter-spacing:-.02em;color:var(--ink-0)}
+.cathero p{margin:.7rem 0 0;max-width:62ch;color:var(--ink-2);font-size:var(--fs-lg);line-height:1.7}
+.cathero-count{flex:none;text-align:center;padding:.9rem 1.4rem;border-radius:var(--r-lg);background:var(--bg-3);border:1px solid var(--line-2)}
+.cathero-count b{display:block;font-family:var(--font-display);font-style:italic;font-size:var(--fs-3xl);line-height:1;background:var(--grad-primary);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.cathero-count span{color:var(--ink-3);font-size:var(--fs-sm)}
+@media (max-width:760px){.cathero{flex-direction:column;align-items:flex-start;padding:var(--sp-5)}.cathero-count{align-self:stretch;display:flex;align-items:baseline;justify-content:center;gap:.6rem}.cathero-count b{font-size:var(--fs-2xl)}}
+
+/* ---------- home: category section headings ---------- */
+.sechead{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap}
+.sechead a:first-child{color:inherit}
+.sechead a:first-child:hover{color:var(--amber-molten)}
+.sechead .ic{margin-inline-end:.5rem}
+.sechead .more{font-family:var(--font-sans);font-style:normal;font-size:var(--fs-sm);font-weight:600;color:var(--amber-molten)}
+.sechead .more:hover{text-decoration:underline}
+
+/* ---------- header category menu ---------- */
+.catmenu{position:relative}
+.catmenu summary{list-style:none;cursor:pointer;user-select:none}
+.catmenu summary::-webkit-details-marker{display:none}
+.catmenu summary i{font-style:normal;font-size:.7em;margin-inline-start:.3rem;transition:transform var(--dur-fast)}
+.catmenu[open] summary i{transform:rotate(180deg)}
+.catmenu-pop{position:absolute;inset-inline-end:0;top:calc(100% + 10px);z-index:var(--z-overlay);min-width:230px;display:grid;gap:2px;padding:.45rem;border-radius:var(--r-lg);background:var(--bg-2);border:1px solid var(--line-2);box-shadow:var(--lift-5);animation:pop .22s var(--ease-out)}
+.catmenu-pop a{display:flex;align-items:center;gap:.65rem;padding:.6rem .8rem;border-radius:var(--r-md);color:var(--ink-1);font-size:var(--fs-sm);font-weight:500}
+.catmenu-pop a:hover{background:var(--bg-3);color:var(--amber-molten)}
+.catmenu-pop a span{display:grid;place-items:center;width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg-3)}
+@keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.97)}}
+
+/* ---------- project page typography ---------- */
+.ptitle{margin:0 0 .6rem;font-family:var(--font-display);font-size:var(--fs-3xl);font-weight:600;font-style:italic;letter-spacing:-.03em;line-height:1.08;color:var(--ink-0)}
+.psum{color:var(--ink-2);font-size:var(--fs-lg);max-width:60ch;line-height:1.7}
+.ph2{margin-top:0;font-family:var(--font-display);font-size:var(--fs-xl);font-weight:600;font-style:italic}
+.ph3{font-family:var(--font-display);font-style:italic}
+a.badge{text-decoration:none}
+.slider .slide>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* ---------- mobile header: keep the logo intact, drop the redundant "Projects" button ---------- */
+.nav > a:first-child{flex:none}
+@media (max-width:640px){
+  .nav{gap:.4rem}
+  .nav .btn{padding-inline:.8rem}
+  .nav > a.btn[href$="#list"]{display:none}
+}
