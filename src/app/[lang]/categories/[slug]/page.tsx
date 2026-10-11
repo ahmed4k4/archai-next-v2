@@ -4,6 +4,7 @@ import Slider from "@/components/Slider";
 import Explorer from "@/components/Explorer";
 import CategoryCards from "@/components/CategoryCards";
 import Backdrop from "@/components/visuals/Backdrop";
+import ThreeDContentStage from "@/components/marketing/ThreeDContentStage";
 import { getHome } from "@/lib/data";
 import { LOCALES, pick, tr } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/supabase";
@@ -66,8 +67,9 @@ export default async function CategoryPage({
   const desc = pick(cat, "description", lang as any);
 
   return (
-    <main className="wrap py-12">
+    <main className="wrap py-12 relative" data-marketing-page="category">
       <Backdrop name="category" />
+      <ThreeDContentStage page="category" ar={lang === "ar"} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

@@ -1,9 +1,10 @@
 "use client";
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 import type { Locale } from "@/lib/types";
 import { AnimatedNumber } from "../motion";
+import Scroll3DCard from "./Scroll3DCard";
 
 /** Animated stat counters with a subtle 3D pop-in, for /about. */
 const STATS = [
@@ -23,18 +24,12 @@ export default function AboutStats({ lang }: { lang: Locale }) {
     <section className="wrap py-20" ref={ref}>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         {STATS.map((s, i) => (
-          <motion.div
+          <Scroll3DCard
             key={s.en}
             className="relative p-6 rounded-3xl glass overflow-hidden text-center"
             initial={reduce ? { opacity: 1, rotateX: 0, y: 0 } : { opacity: 0, rotateX: 35, y: 40 }}
             whileInView={{ opacity: 1, rotateX: 0, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
-            transition={{
-              duration: 0.7,
-              delay: i * 0.1,
-              ease: [0.16, 1, 0.3, 1],
-            }}
-            style={{ transformPerspective: 900 }}
           >
             <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-grad-primary opacity-10 blur-2xl" />
             <div className="relative font-display text-4xl lg:text-5xl font-medium bg-grad-text-light dark:bg-grad-text bg-clip-text text-transparent">
@@ -44,7 +39,7 @@ export default function AboutStats({ lang }: { lang: Locale }) {
             <div className="relative mt-2 text-[11px] font-mono uppercase tracking-widest text-ink-4">
               {ar ? s.ar : s.en}
             </div>
-          </motion.div>
+          </Scroll3DCard>
         ))}
       </div>
     </section>

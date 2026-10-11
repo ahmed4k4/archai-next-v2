@@ -49,7 +49,7 @@ export default async function Home({ params }) {
         dangerouslySetInnerHTML={{ __html: jsonLd([organizationSchema(lang, settings), websiteSchema(lang)]) }}
       />
       {vis.hero !== false ? <Hero lang={lang} settings={settings} count={projects.length} /> : null}
-      <main className="wrap" id="app">
+      <main className="wrap relative z-[1]" id="app">
         {!configured ? (
           <div className="notice">
             <b>{T("setupTitle")}</b>

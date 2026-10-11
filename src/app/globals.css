@@ -238,22 +238,6 @@
     animation: hue-rotate 12s linear infinite;
   }
 
-  /* Scanlines */
-  .scanlines::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 10;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(124, 92, 255, 0.03) 2px,
-      rgba(124, 92, 255, 0.03) 4px
-    );
-  }
-
   /* Text helpers — ink tokens come from CSS vars (theme-aware) */
   .text-ink-0 { color: var(--ink-0); }
   .text-ink-1 { color: var(--ink-1); }
@@ -743,5 +727,4 @@
   .section-title { font-size: clamp(2rem, 10vw, 3rem); }
   .section-desc { font-size: 1rem; line-height: 1.7; }
   .glass:hover, .btn:hover, .btn-primary:hover, .btn-ghost:hover { transform: none; }
-  .scanlines::after { opacity: 0.45; }
 }

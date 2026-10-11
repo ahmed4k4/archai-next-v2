@@ -1,9 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { useReducedMotion } from "framer-motion";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
-import { PALETTE } from "../scene-system";
+import { PALETTE, useScrollProgressRef } from "../scene-system";
+import type { Group } from "three";
+import { useFrame } from "@react-three/fiber";
 
 /** Shared backdrop canvas — subtle, non-interactive, cheap. */
 export default function BackdropWrapper({
@@ -27,26 +29,26 @@ export default function BackdropWrapper({
   }, []);
 
   return (
-    <div className={`pointer-events-none fixed inset-0 z-0 ${light ? "opacity-35" : "opacity-55"}`}>
+    <div className={`pointer-events-none fixed inset-0 z-0 ${light ? "opacity-30" : "opacity-46"}`}>
       <Canvas
         camera={{ position: [0, 0, 10], fov: 50 }}
-        dpr={mobile ? [1, 1] : [1, 1.25]}
+        dpr={mobile ? [1, 1] : [1, 1.15]}
         frameloop={reduce ? "demand" : "always"}
         gl={{ alpha: true, antialias: false, powerPreference: "low-power" }}
         style={{ pointerEvents: "none", width: "100%", height: "100%" }}
       >
         <fog attach="fog" args={[light ? "#f7f9ff" : "#050812", 10, 30]} />
-        <ambientLight intensity={0.55} />
+        <ambientLight intensity={0.62} />
         <pointLight
           position={[0, 0, 5]}
-          intensity={1.2}
+          intensity={1.0}
           color={PALETTE.violet.light}
         />
-        {children}
+        <group>{children}</group>
         {!reduce && !mobile && (
           <EffectComposer multisampling={0}>
             <Bloom
-              intensity={0.6}
+              intensity={0.32}
               luminanceThreshold={0.4}
               luminanceSmoothing={0.5}
               mipmapBlur

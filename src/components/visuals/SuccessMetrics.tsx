@@ -72,18 +72,24 @@ function MetricOrb({ index, x }: { index: number; x: number }) {
   );
 }
 
-/** Rotating ground grid — must live inside <Canvas>. */
-function GroundGrid() {
-  const grid = useRef<Group>(null);
-  useFrame((_, delta) => {
-    if (grid.current) grid.current.rotation.z += delta * 0.02;
+/** Soft floating platform — gives the metric bars depth without a distracting grid. */
+function MetricPlatform() {
+  const ref = useRef<Group>(null);
+  useFrame((state) => {
+    if (!ref.current) return;
+    ref.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.16) * 0.06;
+    ref.current.position.y = -1.48 + Math.sin(state.clock.elapsedTime * 0.32) * 0.04;
   });
   return (
-    <group ref={grid} rotation={[-Math.PI / 2.6, 0, 0]} position={[0, -1.5, 0]}>
-      <gridHelper
-        args={[10, 20, PALETTE.violet, PALETTE.violet]}
-        position={[0, 0, 0]}
-      />
+    <group ref={ref}>
+      <mesh rotation={[-Math.PI / 2.6, 0, 0]}>
+        <cylinderGeometry args={[4.5, 4.8, 0.08, 64]} />
+        <meshPhysicalMaterial color={PALETTE.violet} transparent opacity={0.11} metalness={0.7} roughness={0.28} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2.6, 0, 0]} position={[0, 0.05, 0]}>
+        <torusGeometry args={[3.7, 0.018, 8, 96]} />
+        <meshBasicMaterial color={PALETTE.mint} transparent opacity={0.3} toneMapped={false} />
+      </mesh>
     </group>
   );
 }
@@ -98,7 +104,7 @@ export default function SuccessMetrics({ className }: { className?: string }) {
       camera={{ position: [0, 0.6, 7], fov: 46 }}
       mouseParallax={false}
     >
-      <GroundGrid />
+      <MetricPlatform />
       {xs.map((x, i) => (
         <Bar key={`b${i}`} index={i} x={x} />
       ))}

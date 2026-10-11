@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { pick, tr, safeUrl, projectCover } from "@/lib/i18n";
 import type { Locale } from "@/lib/types";
-import { viewportOnce } from "@/lib/motion";
+import Scroll3DCard from "./marketing/Scroll3DCard";
 
 type ProjectCardProps = { p: any; lang: Locale };
 
@@ -16,13 +16,11 @@ export default function ProjectCard({ p, lang }: ProjectCardProps) {
   const href = `/${lang}/projects/${p.id}`;
 
   return (
-    <motion.article
+    <Scroll3DCard
       className="group relative rounded-3xl overflow-hidden glass"
-      initial={{ opacity: 0, y: 32 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={viewportOnce}
-      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={{ y: -8 }}
+      initial={{ opacity: 0, y: 42, rotateX: 18 }}
+      whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
+      viewport={{ once: true, amount: 0.18 }}
     >
       {/* Cover */}
       <Link
@@ -85,7 +83,7 @@ export default function ProjectCard({ p, lang }: ProjectCardProps) {
             {p.project_technologies.slice(0, 3).map((x: any) => (
               <span
                 key={x.technology}
-                className="px-2 py-1 rounded-md text-[10px] font-mono uppercase tracking-wider text-violet-200 bg-violet-500/10 border border-violet-500/25"
+                className="marketing-3d-chip px-2 py-1 rounded-md text-[10px] font-mono uppercase tracking-wider text-violet-200 bg-violet-500/10 border border-violet-500/25"
               >
                 {x.technology}
               </span>
@@ -119,6 +117,6 @@ export default function ProjectCard({ p, lang }: ProjectCardProps) {
 
       {/* Bottom glow line */}
       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-grad-signal scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500" />
-    </motion.article>
+    </Scroll3DCard>
   );
 }

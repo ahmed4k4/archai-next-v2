@@ -9,7 +9,6 @@ import { MagneticButton, AnimatedNumber } from "./motion";
 import { textReveal } from "@/lib/motion";
 
 const DynamicVisual = dynamic(() => import("./visuals/DynamicVisual"), { ssr: false, loading: () => null });
-const HeroParticles = dynamic(() => import("./HeroParticles"), { ssr: false });
 
 type HeroProps = {
   lang: Locale;
@@ -38,104 +37,24 @@ export default function Hero({ lang, settings, count }: HeroProps) {
     <section
       ref={ref}
       id="hero"
-      className="relative min-h-[100vh] flex items-center overflow-hidden"
+      className="relative min-h-[92vh] flex items-center overflow-hidden hero-premium"
       aria-label="Hero"
     >
-      {/* ============================================================
-          LAYER 1: Animated grid floor
-          ============================================================ */}
-      <div
-        className="absolute inset-x-0 bottom-0 h-[60vh] grid-floor opacity-50"
-        aria-hidden
-      />
-
-      {/* ============================================================
-          LAYER 2: Radial gradient orbs (background)
-          ============================================================ */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        <motion.div
-          className="absolute top-[10%] right-[10%] w-[40vw] h-[40vw] rounded-full blur-[120px] opacity-30"
-          style={{ background: "radial-gradient(circle, #7c5cff 0%, transparent 70%)" }}
-          animate={{ x: [0, 60, 0], y: [0, -40, 0], scale: [1, 1.15, 1] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute bottom-[15%] left-[5%] w-[45vw] h-[45vw] rounded-full blur-[120px] opacity-25"
-          style={{ background: "radial-gradient(circle, #4ce2d0 0%, transparent 70%)" }}
-          animate={{ x: [0, -50, 0], y: [0, 30, 0], scale: [1, 1.2, 1] }}
-          transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute top-[40%] left-[40%] w-[30vw] h-[30vw] rounded-full blur-[140px] opacity-15"
-          style={{ background: "radial-gradient(circle, #ff6b9d 0%, transparent 70%)" }}
-          animate={{ x: [0, 40, -20, 0], y: [0, -30, 40, 0] }}
-          transition={{ duration: 28, repeat: Infinity, ease: "easeInOut" }}
-        />
+      {/* Calm atmospheric lighting only. The previous animated grid/line field is removed. */}
+      <div className="hero-atmosphere absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="hero-light-pool hero-light-pool-violet" />
+        <div className="hero-light-pool hero-light-pool-mint" />
       </div>
 
       {/* ============================================================
           LAYER 3: 3D Scene (right side)
           ============================================================ */}
       <div
-        className="absolute inset-y-0 right-0 w-full lg:w-[55%] pointer-events-none"
+        className="absolute inset-y-0 right-[-6%] w-full lg:w-[58%] pointer-events-none opacity-90 hero-visual-stage"
         aria-hidden
       >
         <DynamicVisual name="HeroCore" className="absolute inset-0" />
       </div>
-
-      {/* ============================================================
-          LAYER 4: Constellation particles
-          ============================================================ */}
-      <HeroParticles />
-
-      {/* ============================================================
-          LAYER 5: Decorative circuit lines
-          ============================================================ */}
-      <svg
-        className="absolute inset-0 w-full h-full pointer-events-none opacity-30"
-        viewBox="0 0 1200 600"
-        preserveAspectRatio="none"
-        aria-hidden
-      >
-        <defs>
-          <linearGradient id="heroCircuitGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#7c5cff" stopOpacity="0" />
-            <stop offset="50%" stopColor="#7c5cff" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#4ce2d0" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[200, 300, 400].map((y, i) => (
-          <path
-            key={i}
-            d={`M0,${y} Q300,${y - 100} 600,${y} T1200,${y}`}
-            stroke="url(#heroCircuitGrad)"
-            strokeWidth={1.5 - i * 0.3}
-            fill="none"
-          />
-        ))}
-        {[
-          { cx: 600, cy: 300 },
-          { cx: 700, cy: 400 },
-          { cx: 500, cy: 200 },
-        ].map((dot, i) => (
-          <motion.circle
-            key={i}
-            cx={dot.cx}
-            cy={dot.cy}
-            r={4}
-            fill="#4ce2d0"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: [0, 1.4, 1], opacity: [0, 1, 0.8] }}
-            transition={{
-              duration: 2,
-              delay: 1.5 + i * 0.3,
-              repeat: Infinity,
-              repeatType: "reverse",
-              repeatDelay: 2,
-            }}
-          />
-        ))}
-      </svg>
 
       {/* ============================================================
           LAYER 6: Content
@@ -145,86 +64,26 @@ export default function Hero({ lang, settings, count }: HeroProps) {
         className="wrap relative z-10 py-24"
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          {/* Stat orb (left on desktop) */}
+          {/* Compact engineering signature — avoids competing with the 3D hero object. */}
           <motion.div
-            className="lg:col-span-3 order-2 lg:order-1"
-            initial={{ opacity: 0, scale: 0.5, rotate: -20 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ duration: 1, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-3 order-2 lg:order-1 hidden lg:block hero-signature-slot"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.45 }}
           >
-            <div className="relative w-[180px] h-[180px] lg:w-[220px] lg:h-[220px] mx-auto lg:mx-0">
-              {/* Rotating ring */}
-              <svg
-                className="absolute inset-0 w-full h-full -rotate-90"
-                viewBox="0 0 100 100"
-                aria-hidden
-              >
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="46"
-                  fill="none"
-                  stroke="rgba(124,92,255,0.15)"
-                  strokeWidth="0.8"
-                />
-                <motion.circle
-                  cx="50"
-                  cy="50"
-                  r="46"
-                  fill="none"
-                  stroke="url(#statRingGrad)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeDasharray="289"
-                  initial={{ strokeDashoffset: 289 }}
-                  animate={{ strokeDashoffset: 60 }}
-                  transition={{ duration: 2.5, delay: 1, ease: [0.16, 1, 0.3, 1] }}
-                />
-                <defs>
-                  <linearGradient id="statRingGrad" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#7c5cff" />
-                    <stop offset="100%" stopColor="#4ce2d0" />
-                  </linearGradient>
-                </defs>
-              </svg>
-
-              {/* Stat center */}
-              <div className="absolute inset-0 grid place-items-center text-center">
-                <div>
-                  <div className="font-display text-5xl lg:text-6xl font-medium bg-grad-text-light dark:bg-grad-text bg-clip-text text-transparent animate-gradient-flow bg-[length:200%_100%]">
-                    <AnimatedNumber value={count} />
-                  </div>
-                  <div className="mt-2 text-[10px] font-mono uppercase tracking-[0.2em] text-ink-3">
-                    {T("engineered")}
-                  </div>
-                </div>
+            <div className="hero-signature-card">
+              <span className="hero-signature-mark" aria-hidden="true"><span /><span /><span /></span>
+              <div className="font-mono text-[10px] tracking-[.2em] text-ink-4 uppercase">ARCHAI / ENGINEERING</div>
+              <div className="mt-3 text-sm text-ink-2">{ar ? "منظومة تقنية مترابطة" : "Connected by design"}</div>
+              <div className="mt-5 flex items-center justify-between gap-3 border-t border-violet-500/15 pt-4">
+                <span className="text-xs text-ink-3">{ar ? "مشاريع المعرض" : "Showcase projects"}</span>
+                <strong className="font-display text-2xl text-ink-0"><AnimatedNumber value={count} /></strong>
               </div>
-
-              {/* Floating decorations */}
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="absolute w-2 h-2 rounded-full bg-mint-400 shadow-glow-mint"
-                  style={{
-                    top: `${20 + i * 30}%`,
-                    left: `${i % 2 === 0 ? -8 : 105}%`,
-                  }}
-                  animate={{
-                    y: [0, -12, 0],
-                    opacity: [0.4, 1, 0.4],
-                  }}
-                  transition={{
-                    duration: 3 + i,
-                    repeat: Infinity,
-                    delay: i * 0.5,
-                  }}
-                />
-              ))}
             </div>
           </motion.div>
 
           {/* Main content */}
-          <div className="lg:col-span-9 order-1 lg:order-2">
+          <div className="lg:col-span-9 order-1 lg:order-2 hero-copy">
             {/* Welcome badge */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}

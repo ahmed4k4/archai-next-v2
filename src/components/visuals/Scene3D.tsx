@@ -1,7 +1,9 @@
 "use client";
 import { Canvas, type CanvasProps, useThree, useFrame } from "@react-three/fiber";
 import { Preload, AdaptiveDpr, AdaptiveEvents } from "@react-three/drei";
-import { Component, Suspense, useEffect, useState, type ReactNode } from "react";
+import { Component, Suspense, useEffect, useState, useRef, type ReactNode } from "react";
+import * as THREE from "three";
+import { useScrollProgressRef } from "./scene-system";
 import { useReducedMotion } from "framer-motion";
 
 type Props = {
@@ -33,17 +35,23 @@ class SceneBoundary extends Component<{ children: ReactNode }, { failed: boolean
   }
 }
 
+
 /** Subtle pointer-driven camera drift + slow breathing. Disabled under reduced-motion. */
 function CameraParallax({ enabled, baseZ = 6, strength = 1 }: { enabled: boolean; baseZ?: number; strength?: number }) {
   const { camera } = useThree();
+  const { progress, target } = useScrollProgressRef();
+  const baseX = useRef(camera.position.x);
+  const baseY = useRef(camera.position.y);
   useFrame((state, delta) => {
     if (!enabled) return;
-    const t = 1 - Math.pow(0.001, delta); // frame-rate independent ease
-    const x = state.pointer.x * 0.9 * strength;
-    const y = state.pointer.y * 0.5 * strength;
+    const t = 1 - Math.pow(0.001, delta);
+    progress.current += (target.current - progress.current) * (1 - Math.pow(0.001, delta));
+    const p = progress.current;
+    const x = baseX.current + state.pointer.x * 0.9 * strength + Math.sin(p * Math.PI * 2) * 0.22 * strength;
+    const y = baseY.current + state.pointer.y * 0.5 * strength + Math.cos(p * Math.PI * 2) * 0.16 * strength;
     camera.position.x += (x - camera.position.x) * t * 0.6;
     camera.position.y += (y - camera.position.y) * t * 0.6;
-    camera.position.z = baseZ + Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
+    camera.position.z = baseZ + Math.sin(state.clock.elapsedTime * 0.5) * 0.16 + Math.sin(p * Math.PI * 2) * 0.55 * strength;
     camera.lookAt(0, 0, 0);
   });
   return null;

@@ -31,7 +31,7 @@ export const PAGE_SCENES: Record<PageKey, VisualName> = {
   "case-studies": "SuccessMetrics",
   careers: "TeamOrbit",
   faq: "QABubbles",
-  project: "KnowledgeFragments",
+  project: "SuccessMetrics",
   category: "ServiceConstellation",
 };
 
@@ -40,18 +40,18 @@ export const PAGE_SCENES: Record<PageKey, VisualName> = {
  * a page always differ while still belonging to the same topic family.
  */
 export const PAGE_STRIP: Record<PageKey, [VisualName, VisualName]> = {
-  home: ["ServiceConstellation", "SuccessMetrics"],
-  services: ["WorkflowGraph", "SuccessMetrics"],
-  industries: ["ServiceConstellation", "TeamOrbit"],
-  about: ["TeamOrbit", "IndustryRings"],
+  home: ["ServiceConstellation", "WorkflowGraph"],
+  services: ["ServiceConstellation", "WorkflowGraph"],
+  industries: ["IndustryRings", "ServiceConstellation"],
+  about: ["DNAHelix", "TeamOrbit"],
   process: ["WorkflowGraph", "SuccessMetrics"],
-  insights: ["DNAHelix", "KnowledgeFragments"],
-  contact: ["SignalBeacon", "TeamOrbit"],
+  insights: ["KnowledgeFragments", "WorkflowGraph"],
+  contact: ["SignalBeacon", "WorkflowGraph"],
   "case-studies": ["SuccessMetrics", "WorkflowGraph"],
   careers: ["TeamOrbit", "DNAHelix"],
-  faq: ["QABubbles", "SignalBeacon"],
-  project: ["SuccessMetrics", "IndustryRings"],
-  category: ["ServiceConstellation", "WorkflowGraph"],
+  faq: ["QABubbles", "KnowledgeFragments"],
+  project: ["SuccessMetrics", "ServiceConstellation"],
+  category: ["ServiceConstellation", "SuccessMetrics"],
 };
 
 export const sceneFor = (page: PageKey): VisualName =>

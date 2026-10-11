@@ -41,11 +41,11 @@ export default function Hero3DDisplay({
   return (
     <motion.div
       ref={host}
-      className={`relative aspect-video rounded-3xl overflow-hidden glass scanlines ${className ?? ""}`}
-      initial={{ opacity: 0, y: 40 }}
+      className={`relative aspect-video rounded-3xl overflow-hidden glass ${className ?? ""}`}
+      initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(124,92,255,.16),transparent_45%),radial-gradient(circle_at_70%_65%,rgba(76,226,208,.1),transparent_42%)]" aria-hidden />
       {ready && <DynamicVisual name={name} className="absolute inset-0" />}

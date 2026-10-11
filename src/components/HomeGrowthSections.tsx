@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { Locale } from "@/lib/types";
 import Hero3DDisplay from "./marketing/Hero3DDisplay";
+import Scroll3DCard from "./marketing/Scroll3DCard";
 
 const content = {
   ar: {
@@ -137,10 +138,12 @@ export default function HomeGrowthSections({ lang }: { lang: Locale }) {
               { n: "03", t: ar ? "بناء واختبار" : "Build and validate", d: ar ? "مراحل قابلة للمراجعة" : "Reviewable delivery stages" },
               { n: "04", t: ar ? "تطوير مستمر" : "Continuous improvement", d: ar ? "قياس وتحسين" : "Measure and improve" },
             ].map((item, i) => (
-              <motion.article key={item.n} {...reveal} transition={{ duration: 0.6, delay: i * 0.07 }} className="home-step-card">
-                <span>{item.n}</span><h3>{item.t}</h3><p>{item.d}</p>
-                <div className="home-step-line" />
-              </motion.article>
+              <motion.div key={item.n} {...reveal} transition={{ duration: 0.6, delay: i * 0.07 }}>
+                <Scroll3DCard className="home-step-card marketing-3d-card">
+                  <span>{item.n}</span><h3>{item.t}</h3><p>{item.d}</p>
+                  <div className="home-step-line" />
+                </Scroll3DCard>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -157,11 +160,13 @@ export default function HomeGrowthSections({ lang }: { lang: Locale }) {
             {c.services.map((service, i) => {
               const Icon = service.icon;
               return (
-                <motion.article key={service.title} {...reveal} transition={{ duration: 0.55, delay: i * 0.055 }} whileHover={reduce ? undefined : { y: -6, rotateX: 1.5 }} className="home-service-card">
-                  <div className="home-service-icon"><Icon size={23} strokeWidth={1.7} /></div>
-                  <h3>{service.title}</h3><p>{service.body}</p>
-                  <div className="home-service-tags">{service.tags}</div>
-                </motion.article>
+                <motion.div key={service.title} {...reveal} transition={{ duration: 0.55, delay: i * 0.055 }}>
+                  <Scroll3DCard className="home-service-card marketing-3d-card">
+                    <div className="home-service-icon"><Icon size={23} strokeWidth={1.7} /></div>
+                    <h3>{service.title}</h3><p>{service.body}</p>
+                    <div className="home-service-tags">{service.tags}</div>
+                  </Scroll3DCard>
+                </motion.div>
               );
             })}
           </div>
@@ -178,8 +183,10 @@ export default function HomeGrowthSections({ lang }: { lang: Locale }) {
             </motion.div>
             <div className="mt-9 space-y-4">
               {c.steps.map(([n, title, body], i) => (
-                <motion.div key={n} {...reveal} transition={{ duration: 0.5, delay: i * 0.06 }} className="home-process-row">
-                  <span className="home-process-number">{n}</span><div><h3>{title}</h3><p>{body}</p></div>
+                <motion.div key={n} {...reveal} transition={{ duration: 0.5, delay: i * 0.06 }}>
+                  <Scroll3DCard className="home-process-row">
+                    <span className="home-process-number">{n}</span><div><h3>{title}</h3><p>{body}</p></div>
+                  </Scroll3DCard>
                 </motion.div>
               ))}
             </div>
@@ -199,9 +206,11 @@ export default function HomeGrowthSections({ lang }: { lang: Locale }) {
           </motion.div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {c.principles.map(([Icon, title, body], i) => (
-              <motion.article key={title} {...reveal} transition={{ duration: 0.5, delay: i * 0.07 }} className="home-principle-card">
-                <Icon size={23} /><h3>{title}</h3><p>{body}</p>
-              </motion.article>
+              <motion.div key={title} {...reveal} transition={{ duration: 0.5, delay: i * 0.07 }}>
+                <Scroll3DCard className="home-principle-card marketing-3d-card">
+                  <Icon size={23} /><h3>{title}</h3><p>{body}</p>
+                </Scroll3DCard>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -228,7 +237,11 @@ export default function HomeGrowthSections({ lang }: { lang: Locale }) {
             <h2 className="section-title mt-4">{c.sectorsTitle}</h2>
           </motion.div>
           <div className="flex flex-wrap gap-3">
-            {c.sectors.map((sector, i) => <motion.span key={sector} {...reveal} transition={{ duration: 0.4, delay: i * 0.04 }} className="home-sector-pill">{sector}<span>↗</span></motion.span>)}
+            {c.sectors.map((sector, i) => (
+              <Scroll3DCard key={sector} as="span" className="home-sector-pill" >
+                {sector}<span>↗</span>
+              </Scroll3DCard>
+            ))}
           </div>
           <div className="mt-8"><Link href={`/${lang}/industries`} className="btn-ghost inline-flex items-center gap-2">{ar ? "استكشف القطاعات" : "Explore industries"}<ArrowUpRight size={17} /></Link></div>
         </div>
@@ -243,7 +256,13 @@ export default function HomeGrowthSections({ lang }: { lang: Locale }) {
             <Link href={`/${lang}/faq`} className="btn-ghost inline-flex mt-6 items-center gap-2">{ar ? "كل الأسئلة" : "All FAQs"}<ArrowUpRight size={17} /></Link>
           </motion.div>
           <div className="space-y-3">
-            {c.faqs.map(([q, a], i) => <motion.details key={q} {...reveal} transition={{ duration: 0.45, delay: i * 0.06 }} className="home-faq"><summary>{q}<span>+</span></summary><p>{a}</p></motion.details>)}
+            {c.faqs.map(([q, a], i) => (
+              <motion.div key={q} {...reveal} transition={{ duration: 0.45, delay: i * 0.06 }}>
+                <Scroll3DCard as="div" className="home-faq">
+                  <details><summary>{q}<span>+</span></summary><p>{a}</p></details>
+                </Scroll3DCard>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>

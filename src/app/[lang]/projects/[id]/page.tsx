@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import Gallery from "@/components/Gallery";
 import ProjectCard from "@/components/ProjectCard";
 import Backdrop from "@/components/visuals/Backdrop";
+import ThreeDContentStage from "@/components/marketing/ThreeDContentStage";
+import Scroll3DCard from "@/components/marketing/Scroll3DCard";
 import { getHome, getProject } from "@/lib/data";
 import { LOCALES, pick, tr, safeUrl, projectImages } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/supabase";
@@ -107,7 +109,7 @@ export default async function ProjectPage({
         {a.map((x) => (
           <span
             key={x}
-            className="px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/30 text-violet-200 text-xs font-mono"
+            className="marketing-3d-chip px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/30 text-violet-200 text-xs font-mono"
           >
             {x}
           </span>
@@ -118,8 +120,9 @@ export default async function ProjectPage({
     );
 
   return (
-    <main className="wrap py-12">
+    <main className="wrap py-12 relative" data-marketing-page="project">
       <Backdrop name="project" />
+      <ThreeDContentStage page="project" ar={lang === "ar"} />
       {/* Schemas */}
       <script
         type="application/ld+json"
@@ -201,7 +204,7 @@ export default async function ProjectPage({
 
       {/* Body */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8 mt-12">
-        <section className="glass p-8">
+        <Scroll3DCard as="div" className="glass p-8">
           <h2 className="font-display text-2xl font-medium text-ink-0 mb-4">
             {T("details")}
           </h2>
@@ -219,10 +222,10 @@ export default async function ProjectPage({
             {T("ind")}
           </h3>
           {chips(ins)}
-        </section>
+        </Scroll3DCard>
 
         <aside>
-          <div className="glass p-6">
+          <Scroll3DCard as="div" className="glass p-6">
             <h3 className="font-display text-lg font-medium text-ink-0 mb-4">
               {T("info")}
             </h3>
@@ -238,16 +241,16 @@ export default async function ProjectPage({
                 </dd>
               </div>
             </dl>
-          </div>
+          </Scroll3DCard>
 
           {p.live_url && (
-            <div className="glass p-6 mt-4">
+            <Scroll3DCard as="div" className="glass p-6 mt-4">
               <h3 className="font-display text-lg font-medium text-ink-0 mb-2">
                 {T("tryT")}
               </h3>
               <p className="text-sm text-ink-3 mb-4">{T("tryD")}</p>
               {live}
-            </div>
+            </Scroll3DCard>
           )}
         </aside>
       </div>

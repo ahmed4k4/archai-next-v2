@@ -4,6 +4,9 @@ import { getHome } from "@/lib/data";
 import { pick } from "@/lib/i18n";
 import type { Locale } from "@/lib/types";
 import { SITE_URL } from "@/lib/supabase";
+import Backdrop from "@/components/visuals/Backdrop";
+import ThreeDContentStage from "@/components/marketing/ThreeDContentStage";
+import Scroll3DCard from "@/components/marketing/Scroll3DCard";
 
 export const revalidate = 60;
 
@@ -31,7 +34,10 @@ export default async function SearchPage({ params, searchParams }: { params: { l
     : projects.slice(0, 12);
 
   return (
-    <main className="wrap py-20 min-h-[70vh]" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <>
+    <Backdrop name="insights" />
+    <main className="wrap relative z-[1] py-20 min-h-[70vh] three-d-card-stage" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <ThreeDContentStage page="insights" ar={lang === "ar"} />
       <p className="section-kicker">{lang === "ar" ? "بحث الموقع" : "SITE SEARCH"}</p>
       <h1 className="section-title">{lang === "ar" ? "ابحث في مشاريعنا" : "Search our work"}</h1>
       <form className="mt-8 flex gap-3 max-w-3xl" action={`/${lang}/search`}>
@@ -40,14 +46,17 @@ export default async function SearchPage({ params, searchParams }: { params: { l
       </form>
       <div className="mt-12 grid md:grid-cols-2 lg:grid-cols-3 gap-5">
         {results.map((p) => (
-          <Link key={p.id} href={`/${lang}/projects/${p.id}`} className="glass p-6 block hover:-translate-y-1 transition-transform">
-            <div className="text-xs font-mono text-violet-300">{p.categories?.name_en || "ARCHAI"}</div>
-            <h2 className="mt-3 text-xl font-semibold text-ink-0">{pick(p, "title", lang)}</h2>
-            <p className="mt-2 text-sm text-ink-3 line-clamp-3">{pick(p, "summary", lang)}</p>
+          <Link key={p.id} href={`/${lang}/projects/${p.id}`} className="block">
+            <Scroll3DCard as="div" className="glass p-6 block marketing-3d-card">
+              <div className="text-xs font-mono text-violet-300">{p.categories?.name_en || "ARCHAI"}</div>
+              <h2 className="mt-3 text-xl font-semibold text-ink-0">{pick(p, "title", lang)}</h2>
+              <p className="mt-2 text-sm text-ink-3 line-clamp-3">{pick(p, "summary", lang)}</p>
+            </Scroll3DCard>
           </Link>
         ))}
       </div>
       {!results.length && <p className="mt-12 text-ink-3">{lang === "ar" ? "لم نجد نتائج مطابقة." : "No matching results."}</p>}
     </main>
+    </>
   );
 }
