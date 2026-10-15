@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import Slider from "@/components/Slider";
 import Explorer from "@/components/Explorer";
 import CategoryCards from "@/components/CategoryCards";
-import Backdrop from "@/components/visuals/Backdrop";
-import ThreeDContentStage from "@/components/marketing/ThreeDContentStage";
+import LazyVisual from "@/components/visuals/LazyVisual";
+import { sceneForCategory } from "@/components/visuals/PageScenes";
 import { getHome } from "@/lib/data";
 import { LOCALES, pick, tr } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/supabase";
@@ -50,7 +50,7 @@ export default async function CategoryPage({
   if (!cat) notFound();
 
   const list = projects
-    .filter((p) => p.category_id === cat.id)
+    .filter((p) => String(p.category_id ?? "") === String(cat.id))
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
   const feat = list
@@ -67,9 +67,7 @@ export default async function CategoryPage({
   const desc = pick(cat, "description", lang as any);
 
   return (
-    <main className="wrap py-12 relative" data-marketing-page="category">
-      <Backdrop name="category" />
-      <ThreeDContentStage page="category" ar={lang === "ar"} />
+    <main data-route-ready="true" className="wrap py-12">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -95,7 +93,7 @@ export default async function CategoryPage({
               `${SITE_URL}/${lang}/categories/${slug}`,
               list.map((p) => ({
                 name: pick(p, "title", lang as any),
-                url: `${SITE_URL}/${lang}/projects/${p.id}`,
+                url: `${SITE_URL}/${lang}/projects/${p.slug || p.id}`,
               }))
             )
           ),
@@ -115,9 +113,12 @@ export default async function CategoryPage({
       </nav>
 
       {/* Hero header */}
-      <header className="relative mb-12 p-8 lg:p-12 rounded-4xl glass overflow-hidden">
+      <header data-gsap-scene className="relative mb-12 p-8 lg:p-12 rounded-4xl glass overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-grad-primary opacity-15 blur-3xl rounded-full pointer-events-none" />
-        <div className="relative flex flex-col lg:flex-row items-start lg:items-center gap-6">
+        <div className="absolute inset-y-0 right-0 rtl:left-0 rtl:right-auto w-1/2 opacity-50 pointer-events-none" data-gsap-parallax="18">
+          <LazyVisual name={sceneForCategory(cat)} className="absolute inset-0" rootMargin="220px 0px" />
+        </div>
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center gap-6">
           <span className="w-20 h-20 grid place-items-center rounded-3xl bg-violet-500/10 border border-violet-500/30 text-4xl shrink-0">
             {cat.icon || "◆"}
           </span>
@@ -158,7 +159,7 @@ export default async function CategoryPage({
       />
 
       {/* Other categories */}
-      {others.some((c) => projects.some((p) => p.category_id === c.id)) && (
+      {others.some((c) => projects.some((p) => String(p.category_id ?? "") === String(c.id))) && (
         <section className="mt-20">
           <h2 className="section-title mb-8">{T("otherCats")}</h2>
           <CategoryCards cats={others} projects={projects} lang={lang as any} />

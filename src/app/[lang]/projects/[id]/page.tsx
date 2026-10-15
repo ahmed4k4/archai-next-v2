@@ -2,9 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Gallery from "@/components/Gallery";
 import ProjectCard from "@/components/ProjectCard";
-import Backdrop from "@/components/visuals/Backdrop";
-import ThreeDContentStage from "@/components/marketing/ThreeDContentStage";
-import Scroll3DCard from "@/components/marketing/Scroll3DCard";
+import LazyVisual from "@/components/visuals/LazyVisual";
+import { sceneForProject } from "@/components/visuals/PageScenes";
 import { getHome, getProject } from "@/lib/data";
 import { LOCALES, pick, tr, safeUrl, projectImages } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/supabase";
@@ -16,11 +15,12 @@ import {
 } from "@/lib/structured-data";
 
 export const revalidate = 60;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const { projects } = await getHome();
   return LOCALES.flatMap((lang) =>
-    projects.map((p) => ({ lang, id: p.id }))
+    projects.map((p) => ({ lang, id: p.slug || p.id }))
   );
 }
 
@@ -46,13 +46,15 @@ export async function generateMetadata({
     ...(p.project_images?.map((i) => i.public_url) || []),
   ].filter(Boolean) as string[];
 
+  const technologies = Array.isArray(p.project_technologies) ? p.project_technologies : [];
+  const industries = Array.isArray(p.project_industries) ? p.project_industries : [];
   const keywords = [
-    ...p.project_technologies.map((t) => t.technology),
-    ...p.project_industries.map((i) => i.industry),
+    ...technologies.map((t) => t.technology),
+    ...industries.map((i) => i.industry),
     pick(p.categories, "name", lang as any),
   ].filter(Boolean);
 
-  return pageSeo(lang as any, `projects/${id}`, title, description, {
+  return pageSeo(lang as any, `projects/${p.slug || p.id}`, title, description, {
     keywords,
     images,
     type: "article",
@@ -74,15 +76,20 @@ export default async function ProjectPage({
   const { projects } = await getHome();
   const title = pick(p, "title", lang as any);
   const catName = pick(p.categories, "name", lang as any);
-  const tg = p.project_technologies.map((x) => x.technology);
-  const ins = p.project_industries.map((x) => x.industry);
+  const technologies = Array.isArray(p.project_technologies) ? p.project_technologies : [];
+  const industries = Array.isArray(p.project_industries) ? p.project_industries : [];
+  const tg = technologies.map((x) => x.technology);
+  const ins = industries.map((x) => x.industry);
 
   const images = projectImages(p);
 
-  const score = (x: any) =>
-    (x.category_id && x.category_id === p.category_id ? 2 : 0) +
-    x.project_technologies.filter((y) => tg.includes(y.technology)).length +
-    x.project_industries.filter((y) => ins.includes(y.industry)).length;
+  const score = (x: any) => {
+    const xTech = Array.isArray(x.project_technologies) ? x.project_technologies : [];
+    const xIndustries = Array.isArray(x.project_industries) ? x.project_industries : [];
+    return (x.category_id && String(x.category_id ?? "") === String(p.category_id ?? "") ? 2 : 0) +
+      xTech.filter((y: any) => tg.includes(y?.technology)).length +
+      xIndustries.filter((y: any) => ins.includes(y?.industry)).length;
+  };
 
   const related = projects
     .filter((x) => x.id !== p.id)
@@ -92,12 +99,13 @@ export default async function ProjectPage({
     .slice(0, 3)
     .map((a) => a[1]);
 
-  const live = p.live_url ? (
+  const liveUrl = safeUrl(p.live_url);
+  const live = liveUrl ? (
     <a
       className="btn-primary"
       target="_blank"
       rel="noopener noreferrer"
-      href={safeUrl(p.live_url)}
+      href={liveUrl}
     >
       {T("visit")} ↗
     </a>
@@ -109,7 +117,7 @@ export default async function ProjectPage({
         {a.map((x) => (
           <span
             key={x}
-            className="marketing-3d-chip px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/30 text-violet-200 text-xs font-mono"
+            className="px-3 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/30 text-violet-200 text-xs font-mono"
           >
             {x}
           </span>
@@ -120,9 +128,7 @@ export default async function ProjectPage({
     );
 
   return (
-    <main className="wrap py-12 relative" data-marketing-page="project">
-      <Backdrop name="project" />
-      <ThreeDContentStage page="project" ar={lang === "ar"} />
+    <main data-route-ready="true" className="wrap py-12">
       {/* Schemas */}
       <script
         type="application/ld+json"
@@ -144,7 +150,7 @@ export default async function ProjectPage({
                     },
                   ]
                 : []),
-              { name: title, url: `${SITE_URL}/${lang}/projects/${id}` },
+              { name: title, url: `${SITE_URL}/${lang}/projects/${p.slug || p.id}` },
             ])
           ),
         }}
@@ -174,7 +180,11 @@ export default async function ProjectPage({
       </nav>
 
       {/* Header */}
-      <header className="mb-10">
+      <header data-gsap-scene className="relative mb-10 p-6 lg:p-8 rounded-3xl glass overflow-hidden">
+        <div className="absolute inset-y-0 right-0 rtl:left-0 rtl:right-auto w-1/2 opacity-45 pointer-events-none" data-gsap-parallax="20">
+          <LazyVisual name={sceneForProject(p)} className="absolute inset-0" rootMargin="220px 0px" />
+        </div>
+        <div className="relative z-10 max-w-3xl lg:max-w-[62%]">
         <div className="flex gap-2 flex-wrap mb-4">
           {p.categories ? (
             <Link className="badge" href={`/${lang}/categories/${p.categories.slug}`}>
@@ -197,6 +207,7 @@ export default async function ProjectPage({
           {pick(p, "summary", lang as any)}
         </p>
         {live && <div className="mt-6">{live}</div>}
+        </div>
       </header>
 
       {/* Gallery */}
@@ -204,7 +215,7 @@ export default async function ProjectPage({
 
       {/* Body */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8 mt-12">
-        <Scroll3DCard as="div" className="glass p-8">
+        <section className="glass p-8">
           <h2 className="font-display text-2xl font-medium text-ink-0 mb-4">
             {T("details")}
           </h2>
@@ -222,10 +233,10 @@ export default async function ProjectPage({
             {T("ind")}
           </h3>
           {chips(ins)}
-        </Scroll3DCard>
+        </section>
 
         <aside>
-          <Scroll3DCard as="div" className="glass p-6">
+          <div className="glass p-6">
             <h3 className="font-display text-lg font-medium text-ink-0 mb-4">
               {T("info")}
             </h3>
@@ -234,23 +245,23 @@ export default async function ProjectPage({
                 <dt className="text-ink-4">{T("cat")}</dt>
                 <dd className="text-ink-1 font-medium">{catName || "—"}</dd>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-ink-4">{T("status")}</dt>
-                <dd className="text-mint-300 font-medium">
-                  {p.status || "published"}
-                </dd>
-              </div>
+              {p.status ? (
+                <div className="flex justify-between">
+                  <dt className="text-ink-4">{T("status")}</dt>
+                  <dd className="text-mint-300 font-medium">{p.status}</dd>
+                </div>
+              ) : null}
             </dl>
-          </Scroll3DCard>
+          </div>
 
-          {p.live_url && (
-            <Scroll3DCard as="div" className="glass p-6 mt-4">
+          {liveUrl && (
+            <div className="glass p-6 mt-4">
               <h3 className="font-display text-lg font-medium text-ink-0 mb-2">
                 {T("tryT")}
               </h3>
               <p className="text-sm text-ink-3 mb-4">{T("tryD")}</p>
               {live}
-            </Scroll3DCard>
+            </div>
           )}
         </aside>
       </div>

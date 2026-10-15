@@ -19,8 +19,8 @@ function LoginForm() {
   const router = useRouter();
   const qs = useSearchParams();
 
-  const [email, setEmail] = useState("admin@gmail.com");
-  const [password, setPassword] = useState("12345678");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -151,6 +151,8 @@ function LoginForm() {
                 <span className="text-violet-300 text-xs">◉</span>
                 <input
                   type="email"
+                  dir="ltr"
+                  placeholder="admin@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

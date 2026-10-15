@@ -4,26 +4,29 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { pick, tr, safeUrl, projectCover } from "@/lib/i18n";
 import type { Locale } from "@/lib/types";
-import Scroll3DCard from "./marketing/Scroll3DCard";
 
-type ProjectCardProps = { p: any; lang: Locale };
+type ProjectCardProps = { p: any; lang: Locale; index?: number };
 
-export default function ProjectCard({ p, lang }: ProjectCardProps) {
+export default function ProjectCard({ p, lang, index = 0 }: ProjectCardProps) {
   const T = tr(lang);
   const title = pick(p, "title", lang);
   const cover = projectCover(p);
+  const liveUrl = safeUrl(p.live_url);
+  const technologies = Array.isArray(p?.project_technologies) ? p.project_technologies : [];
   const [broken, setBroken] = useState(false);
-  const href = `/${lang}/projects/${p.id}`;
+  const href = `/${lang}/projects/${p.slug || p.id}`;
 
   return (
-    <Scroll3DCard
+    <motion.article
       className="group relative rounded-3xl overflow-hidden glass"
-      initial={{ opacity: 0, y: 42, rotateX: 18 }}
-      whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
-      viewport={{ once: true, amount: 0.18 }}
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.42, delay: Math.min(index * 0.045, 0.27), ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ y: -8 }}
     >
       {/* Cover */}
       <Link
+        prefetch={false}
         href={href}
         className="block relative aspect-[16/10] overflow-hidden bg-violet-900/20"
         aria-label={`${T("details")} — ${title}`}
@@ -40,8 +43,15 @@ export default function ProjectCard({ p, lang }: ProjectCardProps) {
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
           />
         ) : (
-          <div className="w-full h-full grid place-items-center bg-grad-aurora opacity-30">
-            <span className="text-6xl text-violet-200/60">◫</span>
+          <div className="relative grid h-full w-full place-items-center overflow-hidden bg-[radial-gradient(circle_at_72%_30%,rgba(99,102,241,0.36),transparent_32%),radial-gradient(circle_at_20%_88%,rgba(45,212,191,0.20),transparent_36%),linear-gradient(135deg,#101426_0%,#090d19_56%,#17132b_100%)]">
+            <div className="pointer-events-none absolute h-[78%] aspect-square rounded-full border border-violet-200/20 rotate-[-24deg]" />
+            <div className="pointer-events-none absolute h-[58%] aspect-square rounded-full border border-mint-200/20 rotate-[32deg] scale-x-[1.65]" />
+            <div className="pointer-events-none absolute h-2 w-2 rounded-full bg-mint-200 shadow-[0_0_24px_rgba(153,246,228,0.9)] translate-x-20 -translate-y-16" />
+            <div className="relative z-10 flex flex-col items-center gap-2 text-center">
+              <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-mint-200/80">{p.categories ? pick(p.categories, "name", lang) : "ARCHAI / WORK"}</span>
+              <span className="font-display text-5xl font-semibold tracking-tight text-white/90">{String(title).split(/\s+/).filter(Boolean).slice(0, 2).map((part: string) => part[0]).join("").toUpperCase()}</span>
+              <span className="h-px w-12 bg-gradient-to-r from-transparent via-violet-200/70 to-transparent" />
+            </div>
           </div>
         )}
 
@@ -70,7 +80,7 @@ export default function ProjectCard({ p, lang }: ProjectCardProps) {
       {/* Body */}
       <div className="p-6">
         <h3 className="font-display text-xl font-medium text-ink-0 mb-3 leading-snug group-hover:text-violet-200 transition-colors duration-300">
-          <Link href={href}>{title}</Link>
+          <Link href={href} prefetch={false}>{title}</Link>
         </h3>
 
         <p className="text-sm text-ink-3 leading-relaxed mb-4 line-clamp-2">
@@ -78,12 +88,12 @@ export default function ProjectCard({ p, lang }: ProjectCardProps) {
         </p>
 
         {/* Tech tags */}
-        {p.project_technologies?.length > 0 && (
+        {technologies.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-5">
-            {p.project_technologies.slice(0, 3).map((x: any) => (
+            {technologies.slice(0, 3).map((x: any) => (
               <span
                 key={x.technology}
-                className="marketing-3d-chip px-2 py-1 rounded-md text-[10px] font-mono uppercase tracking-wider text-violet-200 bg-violet-500/10 border border-violet-500/25"
+                className="px-2 py-1 rounded-md text-[10px] font-mono uppercase tracking-wider text-violet-200 bg-violet-500/10 border border-violet-500/25"
               >
                 {x.technology}
               </span>
@@ -93,12 +103,12 @@ export default function ProjectCard({ p, lang }: ProjectCardProps) {
 
         {/* Actions */}
         <div className="flex gap-2">
-          {p.live_url && (
+          {liveUrl && (
             <a
               className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-grad-cta text-white text-xs font-semibold hover:shadow-glow-violet transition-all"
               target="_blank"
               rel="noopener noreferrer"
-              href={safeUrl(p.live_url)}
+              href={liveUrl}
             >
               {T("visit")}
               <span className="text-sm">↗</span>
@@ -106,8 +116,9 @@ export default function ProjectCard({ p, lang }: ProjectCardProps) {
           )}
           <Link
             href={href}
+            prefetch={false}
             className={`${
-              p.live_url ? "" : "flex-1"
+              liveUrl ? "" : "flex-1"
             } inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-violet-500/30 bg-violet-500/5 text-ink-1 text-xs font-semibold hover:bg-violet-500/15 hover:border-violet-500/50 transition-all`}
           >
             {T("details")}
@@ -117,6 +128,6 @@ export default function ProjectCard({ p, lang }: ProjectCardProps) {
 
       {/* Bottom glow line */}
       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-grad-signal scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500" />
-    </Scroll3DCard>
+    </motion.article>
   );
 }

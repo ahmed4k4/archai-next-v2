@@ -3,6 +3,7 @@ import { pageSeo } from "@/lib/seo";
 import { isLocale } from "@/lib/i18n";
 import { notFound } from "next/navigation";
 import type { Locale } from "@/lib/types";
+import { getEditablePageCopy } from "@/lib/page-content";
 
 const copy = {
   ar: {
@@ -39,14 +40,14 @@ const copy = {
 
 export async function generateMetadata({ params }: { params: { lang: string } }) {
   const lang = isLocale(params.lang) ? params.lang : "en";
-  const c = copy[lang];
-  return pageSeo(lang, "careers", `${c.title} ${c.accent}`, c.description);
+  const c = await getEditablePageCopy(lang, "careers", copy[lang]);
+  return pageSeo(lang, "careers", c.seoTitle || `${c.title} ${c.accent}`, c.seoDescription || c.description);
 }
 
-export default function Page({ params }: { params: { lang: string } }) {
+export default async function Page({ params }: { params: { lang: string } }) {
   if (!isLocale(params.lang)) notFound();
   const lang = params.lang as Locale;
-  const c = copy[lang];
+  const c = await getEditablePageCopy(lang, "careers", copy[lang]);
 
   return (
     <MarketingPage

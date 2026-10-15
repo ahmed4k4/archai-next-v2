@@ -1,45 +1,72 @@
 "use client";
-import { useReducedMotion } from "framer-motion";
-import { useInView } from "framer-motion";
-import { useRef } from "react";
-import type { Locale } from "@/lib/types";
-import { AnimatedNumber } from "../motion";
-import Scroll3DCard from "./Scroll3DCard";
 
-/** Animated stat counters with a subtle 3D pop-in, for /about. */
-const STATS = [
-  { value: 2, suffix: "", ar: "لغتان للموقع", en: "Site languages" },
-  { value: 6, suffix: "", ar: "مجالات تقنية", en: "Capability areas" },
-  { value: 4, suffix: "", ar: "مراحل للتنفيذ", en: "Delivery stages" },
-  { value: 1, suffix: "", ar: "منظومة متكاملة", en: "Connected approach" },
+import { motion, useReducedMotion } from "framer-motion";
+import type { Locale } from "@/lib/types";
+
+/** Animated capability highlights; intentionally avoids unverified success metrics. */
+const HIGHLIGHTS = [
+  {
+    index: "01",
+    titleAr: "6 مسارات خدمة أساسية",
+    titleEn: "Six core service lines",
+    bodyAr: "تطوير الويب، أنظمة الأعمال، الذكاء الاصطناعي، الأنظمة المدمجة وإنترنت الأشياء، تطبيقات الموبايل، والدعم المستمر.",
+    bodyEn: "Web development, business systems, AI, embedded and IoT, mobile applications, and ongoing support.",
+  },
+  {
+    index: "02",
+    titleAr: "لغتان، تجربة واحدة",
+    titleEn: "Two languages, one experience",
+    bodyAr: "تجربة عربية وإنجليزية مع مراعاة اتجاه الكتابة وتنسيق الواجهة في كل لغة.",
+    bodyEn: "Arabic and English experiences designed around the right reading direction and layout for each language.",
+  },
+  {
+    index: "03",
+    titleAr: "من الواجهات إلى الأجهزة",
+    titleEn: "From interfaces to devices",
+    bodyAr: "نجمع تطوير الويب والموبايل وتكامل الذكاء الاصطناعي والأنظمة المدمجة ضمن نطاق هندسي متكامل.",
+    bodyEn: "Our technical scope spans web and mobile products, practical AI integrations, and embedded systems.",
+  },
+  {
+    index: "04",
+    titleAr: "ما بعد الإطلاق أيضًا",
+    titleEn: "Beyond launch",
+    bodyAr: "يشمل نطاق العمل الصيانة وتحسين الأداء والمراجعات التقنية وتطوير المنتج على مراحل.",
+    bodyEn: "The service scope includes maintenance, performance improvements, technical reviews, and iterative product development.",
+  },
 ];
 
 export default function AboutStats({ lang }: { lang: Locale }) {
   const ar = lang === "ar";
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, amount: 0.4 });
   const reduce = useReducedMotion();
 
   return (
-    <section className="wrap py-20" ref={ref}>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-        {STATS.map((s, i) => (
-          <Scroll3DCard
-            key={s.en}
-            className="relative p-6 rounded-3xl glass overflow-hidden text-center"
-            initial={reduce ? { opacity: 1, rotateX: 0, y: 0 } : { opacity: 0, rotateX: 35, y: 40 }}
-            whileInView={{ opacity: 1, rotateX: 0, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
+    <section className="wrap py-20" aria-labelledby="about-capabilities-title">
+      <h2 id="about-capabilities-title" className="sr-only">
+        {ar ? "نطاق قدرات أركاي" : "Archai capabilities"}
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {HIGHLIGHTS.map((item, i) => (
+          <motion.article
+            key={item.index}
+            className="relative h-full min-h-56 p-6 rounded-3xl glass overflow-hidden"
+            initial={reduce ? { opacity: 1, rotateX: 0, y: 0 } : { opacity: 0, rotateX: 22, y: 24 }}
+            whileInView={reduce ? undefined : { opacity: 1, rotateX: 0, y: 0 }}
+            viewport={{ once: true, amount: 0.25 }}
+            transition={{ duration: 0.65, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+            style={{ transformPerspective: 900 }}
           >
             <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-grad-primary opacity-10 blur-2xl" />
-            <div className="relative font-display text-4xl lg:text-5xl font-medium bg-grad-text-light dark:bg-grad-text bg-clip-text text-transparent">
-              {inView ? <AnimatedNumber value={s.value} /> : 0}
-              {s.suffix}
+            <div className="relative flex items-center justify-between gap-3 mb-8">
+              <span className="font-mono text-[10px] tracking-[0.18em] text-ink-4">ARCHAI / {item.index}</span>
+              <span aria-hidden="true" className="w-2 h-2 rounded-full bg-mint-300 shadow-[0_0_16px_rgba(76,226,208,0.45)]" />
             </div>
-            <div className="relative mt-2 text-[11px] font-mono uppercase tracking-widest text-ink-4">
-              {ar ? s.ar : s.en}
-            </div>
-          </Scroll3DCard>
+            <h3 className="relative font-display text-xl leading-snug font-medium text-ink-0 mb-3">
+              {ar ? item.titleAr : item.titleEn}
+            </h3>
+            <p className="relative text-sm leading-relaxed text-ink-3">
+              {ar ? item.bodyAr : item.bodyEn}
+            </p>
+          </motion.article>
         ))}
       </div>
     </section>

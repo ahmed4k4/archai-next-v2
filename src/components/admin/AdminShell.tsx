@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   FolderKanban,
+  FileText,
   Sparkles,
   BarChart3,
   Settings,
@@ -43,6 +44,7 @@ const NAV_SECTIONS: NavSection[] = [
     labelEn: "CONTENT",
     items: [
       { href: "/admin/projects", key: "projects", icon: FolderKanban, kb: "P" },
+      { href: "/admin/content", key: "contentPages", icon: FileText, kb: "M" },
       { href: "/admin/categories", key: "categories", icon: Sparkles, kb: "C" },
       { href: "/admin/seo", key: "seo", icon: Search, kb: "S" },
     ],
@@ -64,6 +66,7 @@ const labels: Record<AdminLocale, Record<string, string>> = {
   ar: {
     overview: "نظرة عامة",
     projects: "المشاريع",
+    contentPages: "محتوى الصفحات",
     categories: "الأقسام",
     analytics: "الإحصائيات",
     settings: "الإعدادات",
@@ -78,6 +81,7 @@ const labels: Record<AdminLocale, Record<string, string>> = {
   en: {
     overview: "Overview",
     projects: "Projects",
+    contentPages: "Page content",
     categories: "Categories",
     analytics: "Analytics",
     settings: "Settings",
@@ -126,7 +130,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       const th = localStorage.getItem("theme") || "dark";
       setTheme(th);
       document.documentElement.dataset.theme = th;
-      window.dispatchEvent(new Event("archai:theme-change"));
     } catch {}
   }, []);
 
@@ -179,7 +182,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
     document.documentElement.dataset.theme = next;
-    window.dispatchEvent(new Event("archai:theme-change"));
     try {
       localStorage.setItem("theme", next);
     } catch {}

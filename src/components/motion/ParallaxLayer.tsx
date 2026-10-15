@@ -33,7 +33,7 @@ export default function ParallaxLayer({
   return (
     <motion.div
       ref={ref}
-      style={reduce ? { position: "relative" } : { y, position: "relative" }}
+      style={reduce ? undefined : { y }}
       className={className}
     >
       {children}

@@ -1,5 +1,6 @@
 import "./styles/globals.css";
 import "./globals.css";
+import "lenis/dist/lenis.css";
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://archai-website-navy.vercel.app"),

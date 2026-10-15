@@ -132,7 +132,7 @@ function Spinner({ children }: { children: React.ReactNode }) {
 
 export default function DNAHelix({ className }: { className?: string }) {
   return (
-    <Scene3D className={className} camera={{ position: [0, 0, 7.5], fov: 46 }}>
+    <Scene3D fallbackKind="helix" className={className} camera={{ position: [0, 0, 7.5], fov: 46 }}>
       <Spinner>
         <Backbone offset={0} color={PALETTE.violet} />
         <Backbone offset={Math.PI} color={PALETTE.mint} />

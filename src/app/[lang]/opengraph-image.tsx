@@ -4,6 +4,7 @@ export const alt = "Archai Solutions";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const runtime = "edge";
+export const revalidate = 60;
 
 export default async function OGImage({
   params,
@@ -11,10 +12,34 @@ export default async function OGImage({
   params: { lang: string };
 }) {
   const ar = params.lang === "ar";
-  const title = ar ? "اكتشف مشاريعنا الرقمية" : "Explore Our Digital Projects";
-  const subtitle = ar
-    ? "حلول برمجية · ذكاء اصطناعي · أنظمة مدمجة"
-    : "Software · AI · Embedded · IoT";
+  // Use the public, RLS-protected settings row so the OG card follows dashboard edits.
+  // Keep the image generator resilient: if Supabase is unavailable, use honest defaults.
+  let settings: Record<string, unknown> = {};
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "");
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (supabaseUrl && anonKey) {
+    try {
+      const response = await fetch(
+        `${supabaseUrl}/rest/v1/site_settings?id=eq.1&select=company_name,home_title_ar,home_title_en,brand_tagline_ar,brand_tagline_en`,
+        { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` }, cache: "force-cache" },
+      );
+      if (response.ok) {
+        const rows = await response.json();
+        if (Array.isArray(rows) && rows[0] && typeof rows[0] === "object") settings = rows[0];
+      }
+    } catch {
+      // Fall through to localized defaults; social preview generation must not fail.
+    }
+  }
+  const title = (typeof settings[ar ? "home_title_ar" : "home_title_en"] === "string"
+    ? String(settings[ar ? "home_title_ar" : "home_title_en"]).trim()
+    : "") || (ar ? "منتجات رقمية تُبنى حول احتياج حقيقي" : "Digital products built around real needs");
+  const companyName = (typeof settings.company_name === "string" && settings.company_name.trim())
+    ? settings.company_name.trim()
+    : "Archai Integrated Systems";
+  const subtitle = ((typeof settings[ar ? "brand_tagline_ar" : "brand_tagline_en"] === "string"
+    ? String(settings[ar ? "brand_tagline_ar" : "brand_tagline_en"]).trim()
+    : "") || (ar ? "أنظمة متكاملة · منتجات رقمية · ذكاء اصطناعي" : "Integrated systems · Digital products · AI")).slice(0, 140);
 
   return new ImageResponse(
     (
@@ -75,7 +100,7 @@ export default async function OGImage({
           >
             A
           </div>
-          ARCHAI SOLUTIONS
+          {companyName.toUpperCase()}
         </div>
 
         <div
@@ -126,7 +151,7 @@ export default async function OGImage({
               boxShadow: "0 0 20px #4ce2d0",
             }}
           />
-          {ar ? "الأنظمة المتكاملة" : "INTEGRATED SYSTEMS"}
+          {ar ? "حلول هندسية متكاملة" : "DIGITAL PRODUCT ENGINEERING"}
         </div>
       </div>
     ),

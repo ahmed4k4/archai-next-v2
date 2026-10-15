@@ -71,6 +71,7 @@ export default function Slider({ items, lang, label, id }: SliderProps) {
         {items.map((x, j) => {
           const src = projectCover(x);
           const title = pick(x, "title", lang);
+          const liveUrl = safeUrl(x.live_url);
           return (
             <article
               key={x.id}
@@ -134,12 +135,12 @@ export default function Slider({ items, lang, label, id }: SliderProps) {
                   viewport={viewportOnce}
                   transition={{ delay: 0.35 }}
                 >
-                  {x.live_url && (
+                  {liveUrl && (
                     <a
                       className="btn-primary"
                       target="_blank"
                       rel="noopener noreferrer"
-                      href={safeUrl(x.live_url)}
+                      href={liveUrl}
                     >
                       {T("visit")}
                       <span>↗</span>
@@ -147,7 +148,7 @@ export default function Slider({ items, lang, label, id }: SliderProps) {
                   )}
                   <Link
                     className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-white/25 bg-white/5 text-white text-sm font-semibold backdrop-blur-md hover:bg-white/10 hover:border-white/40 transition-all"
-                    href={`/${lang}/projects/${x.id}`}
+                    href={`/${lang}/projects/${x.slug || x.id}`}
                   >
                     {T("details")}
                   </Link>

@@ -18,9 +18,10 @@ A bilingual (Arabic RTL / English LTR) portfolio and company website for **Archa
 ### Visual identity
 - **Unified brand palette**: Violet `#7c5cff` + Mint `#4ce2d0` with Rose `#ff6b9d` as accent
 - **Two themes** (dark / light) using the same palette
-- **Aurora background** with animated radial blobs
-- **Scroll progress bar** across every page
-- **Grid floor + scanline + noise** overlays
+- **Shared animated galaxy background** with layered stars, twinkle, subtle drift, and short meteors
+- **Scroll progress bar** across every public page
+- **Planetary hero artwork** with a procedural surface, cloud layer, atmospheric rim, thin orbital rings, and moon
+- **Unified route curtain** coordinated with the first visible 3D frame, with a timeout fallback
 
 ### Animation library
 - **14 motion components** (`Reveal`, `Stagger`, `MagneticButton`, `TiltCard`, `Marquee`, `ScrollProgress`, `AnimatedNumber`, `PageTransition`...)
@@ -33,7 +34,7 @@ Each marketing page uses a **different WebGL scene**:
 
 | Page | Scene |
 |------|-------|
-| Home Hero | Multi-layer core + rings + shards + sparkles + particles |
+| Home Hero | Procedural planet + cloud shell + atmosphere + orbital rings + moon |
 | `/services` | MetallicPolyhedron |
 | `/industries` | OrbitSystem |
 | `/about` | ParticleGlobe |
@@ -49,9 +50,10 @@ Extra in-page scenes (`Hero3DDisplay`): FloatingCards, plus reuses of the above 
 ### Public pages
 - `/ar` and `/en` home
 - `/services`, `/industries`, `/about`, `/process`, `/insights`
+- `/projects` — dedicated searchable and filterable project catalogue
 - `/case-studies`, `/careers`, `/faq`, `/contact`
 - `/categories/[slug]`
-- `/projects/[id]`
+- `/projects/[id]` — individual project detail pages
 
 ### Admin panel
 - **Dashboard** with KPIs, traffic chart (14 days), recent projects, quick actions
@@ -67,13 +69,23 @@ Extra in-page scenes (`Hero3DDisplay`): FloatingCards, plus reuses of the above 
 - **Dark / light** theme toggle
 
 ### SEO
-- Full **JSON-LD** structured data: Organization, WebSite + SearchAction, BreadcrumbList, CreativeWork, OfferCatalog, HowTo, FAQPage, AboutPage, ContactPage, CollectionPage
+- Full **JSON-LD** structured data where appropriate: Organization, WebSite, BreadcrumbList, CreativeWork, OfferCatalog, HowTo, FAQPage, AboutPage, ContactPage, CollectionPage
 - **Dynamic OG images** per language and per project (via `next/og`)
 - **Canonical URLs** + **hreflang** (ar / en / x-default)
 - **Sitemap** with images and alternates
 - **Robots** with crawler-specific rules
 - **Rich keywords** generated from project technologies + industries
 - **Verification** hook for Google Search Console
+
+---
+
+## October 2026 project archive and performance review
+
+- The homepage focuses on company capabilities, audience fit, engineering principles, delivery approach, FAQs, and a single clear project-archive CTA; the full project grid lives at `/{lang}/projects`.
+- The project archive reuses the existing search/category/technology filter, adds a 3D workflow hero, localized metadata, CollectionPage and BreadcrumbList JSON-LD, and a loading skeleton.
+- The shared galaxy is drawn on one 2D canvas. Below-the-fold 3D visual bundles mount near the viewport and off-screen canvases pause their render loops.
+- Route transitions use a short curtain and content entrance; the curtain responds to the first visible Canvas frame with a bounded timeout fallback. It intentionally does not wait for every below-the-fold 3D scene.
+- `REVIEW-RESULTS.txt` and `docs/COMPLETE-SITE-REVIEW-2026-10-13.md` describe static checks and the remaining validation required before release.
 
 ---
 
@@ -124,6 +136,7 @@ npm run dev
 
 ### 7. Verify
 ```bash
+npm run verify:source
 npm run typecheck
 npm run build
 ```
@@ -256,6 +269,7 @@ npm run dev          # Development server
 npm run build        # Production build
 npm run start        # Start production server
 npm run typecheck    # TypeScript check
+npm run verify:source # Static syntax/import/route/regression checks
 ```
 
 ---
@@ -284,12 +298,19 @@ npm run typecheck    # TypeScript check
 
 Proprietary — © Archai Integrated Systems
 
-## Latest stability and homepage upgrade
+## Company content and dashboard-managed settings
 
-- Fixed the React Three Fiber hook-context crash in `HeroCore` by moving `useFrame` into a child rendered inside `Scene3D`'s Canvas.
-- Fixed the `/icon.svg` route conflict and refreshed the public SVG icon.
-- Reduced WebGL work on mobile/low-power devices and unmount off-screen 3D panels.
-- Expanded the bilingual home page with service capabilities, delivery process, engineering principles, sectors, FAQs, and project CTA sections.
-- Added per-language homepage metadata and Organization/WebSite JSON-LD.
-- Replaced unverified client-logo and company-metric claims with capability labels and descriptive counts.
-- See `docs/CONSOLE-ERRORS.md` for console-log triage and validation limits.
+Apply the SQL files in `supabase/` in this exact order in the Supabase SQL Editor: `01_setup.sql`, `02_make_admin.sql`, `03_media_system.sql`, `04_editorial_cms.sql`, then `05_dashboard_global_content.sql`. For an existing installation, run any missing migrations in that order. The CMS/settings migrations preserve existing edits and do not seed project records.
+
+- `/admin/settings` manages the company name and logo, bilingual brand taglines, homepage title/description, SEO share image, contact details, social profiles, navigation labels/order/visibility, bilingual footer headline/accent/description, and homepage section visibility.
+- `/admin/content` manages bilingual page copy, card arrays, structured section JSON (including homepage capability labels and 3D scene choices), call-to-action labels/links, publication status, and per-page SEO title/description. The public pages read published records from `site_page_content`.
+- Project cards, detail pages, categories, technologies, industries, and images are sourced from Supabase. No static example project records are substituted when the database is empty or unavailable.
+- After saving content, the admin calls `/api/revalidate` to refresh cached public content. If a migration has not been applied, the dashboard shows the database error rather than silently pretending the save succeeded.
+
+The main navigation is intentionally restricted to known internal routes for safety. The CMS can rename, reorder, and hide routes, but cannot inject arbitrary external URLs into the primary navigation.
+
+
+
+## Performance and mobile behavior
+
+See [`docs/PERFORMANCE-2026-10-14.md`](docs/PERFORMANCE-2026-10-14.md) for the latest public-route caching, mobile 3D loading, background rendering, live-visitor polling, Supabase query/log guidance, and validation status.

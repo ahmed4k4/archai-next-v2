@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
+import { MotionConfig } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ScrollProgress from "@/components/motion/ScrollProgress";
 import CursorGlow from "@/components/motion/CursorGlow";
+import SmoothMotion from "@/components/motion/SmoothMotion";
+import GalaxyBackground from "@/components/visuals/GalaxyBackground";
+import RouteTransition from "@/components/motion/RouteTransition";
 import LocaleSync from "@/components/LocaleSync";
-import Tracker from "@/components/Tracker";
 import { getHome } from "@/lib/data";
 import { LOCALES, isLocale, pick } from "@/lib/i18n";
 import type { Locale } from "@/lib/types";
@@ -29,11 +32,13 @@ export async function generateMetadata({
   const { lang } = params;
   const { settings } = await getHome();
 
-  const title =
-    settings.site_title ||
+  const configuredTitle = typeof settings.site_title === "string" ? settings.site_title.trim() : "";
+  const title = configuredTitle ||
     (lang === "ar"
       ? "الحلول البرمجية والذكاء الاصطناعي"
       : "Software, AI & Digital Product Engineering");
+  const configuredBrand = typeof settings.company_name === "string" ? settings.company_name.trim() : "";
+  const brand = configuredBrand || (lang === "ar" ? "أركاي للحلول البرمجية" : "Archai Solutions");
 
   const description =
     pick(settings, "home_desc", lang as Locale) ||
@@ -41,12 +46,17 @@ export async function generateMetadata({
       ? "أركاي للحلول البرمجية: نبني المنتجات الرقمية ومنصات الويب وحلول الذكاء الاصطناعي والأنظمة المدمجة وإنترنت الأشياء."
       : "Archai Solutions designs and builds digital products, web platforms, AI-powered workflows, and embedded/IoT systems.");
 
-  const localizedTitle =
-    lang === "ar"
-      ? `${title} | أركاي للحلول البرمجية`
-      : `${title} | Archai Solutions`;
+  const localizedTitle = `${title} | ${brand}`;
 
   const canonical = `${SITE_URL}/${lang}`;
+  const configuredImage = typeof settings.default_seo_image === "string" ? settings.default_seo_image.trim() : "";
+  const defaultImage = configuredImage
+    ? configuredImage.startsWith("/") && !configuredImage.startsWith("//")
+      ? `${SITE_URL}${configuredImage}`
+      : /^https:\/\//i.test(configuredImage)
+        ? configuredImage
+        : `${SITE_URL}/${lang}/opengraph-image`
+    : `${SITE_URL}/${lang}/opengraph-image`;
   const keywords =
     lang === "ar"
       ? [
@@ -70,15 +80,24 @@ export async function generateMetadata({
 
   return {
     metadataBase: new URL(SITE_URL),
-    title: { default: localizedTitle, template: "%s | Archai Solutions" },
+    title: {
+      default: localizedTitle,
+      template: `%s | ${brand}`,
+    },
     description,
     keywords,
-    applicationName: "Archai Solutions",
+    applicationName: brand,
     category: "technology",
-    authors: [{ name: "Archai Solutions", url: SITE_URL }],
-    creator: "Archai Solutions",
-    publisher: "Archai Solutions",
-    icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }] },
+    authors: [{ name: brand, url: SITE_URL }],
+    creator: brand,
+    publisher: brand,
+    icons: {
+      icon: [
+        { url: "/icon.svg", type: "image/svg+xml" },
+        { url: "/favicon.ico", sizes: "any" },
+      ],
+      apple: "/apple-icon.png",
+    },
     alternates: {
       canonical,
       languages: {
@@ -91,34 +110,24 @@ export async function generateMetadata({
       title: localizedTitle,
       description,
       url: canonical,
-      siteName: "Archai Solutions",
+      siteName: brand,
       type: "website",
       locale: lang === "ar" ? "ar_EG" : "en_US",
       alternateLocale: lang === "ar" ? "en_US" : "ar_EG",
-      images: settings.default_seo_image
-        ? [
-            {
-              url: settings.default_seo_image,
-              width: 1200,
-              height: 630,
-              alt: localizedTitle,
-            },
-          ]
-        : [
-            {
-              url: `${SITE_URL}/${lang}/opengraph-image`,
-              width: 1200,
-              height: 630,
-              alt: localizedTitle,
-            },
-          ],
+      images: [
+        {
+          url: defaultImage,
+          width: 1200,
+          height: 630,
+          alt: localizedTitle,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: localizedTitle,
       description,
-      images: [`${SITE_URL}/${lang}/opengraph-image`],
-      creator: "@archaisolutions",
+      images: [defaultImage],
     },
     robots: {
       index: true,
@@ -148,11 +157,13 @@ export default async function RootLayout({
   if (!isLocale(lang)) notFound();
   const { cats, projects, settings } = await getHome();
   const withProjects = cats.filter((c) =>
-    projects.some((p) => p.category_id === c.id)
+    projects.some((p) => String(p.category_id ?? "") === String(c.id))
   );
 
   return (
     <>
+      <GalaxyBackground />
+      <div className="site-layer">
       {/* ============================================================
           Structured data — Organization + Website
           ============================================================ */}
@@ -162,22 +173,26 @@ export default async function RootLayout({
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLd(websiteSchema(lang)) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(websiteSchema(lang, settings)) }}
       />
 
       {/* ============================================================
           Global layers — each page renders its own WebGL Backdrop.
           ============================================================ */}
-      <LocaleSync lang={lang} />
-      <ScrollProgress />
-      <CursorGlow />
-      <Tracker />
+      <MotionConfig reducedMotion="user">
+      <SmoothMotion>
+        <LocaleSync lang={lang} />
+        <ScrollProgress />
+        <CursorGlow />
 
-      <Header lang={lang} cats={withProjects} />
+        <Header lang={lang} cats={withProjects} settings={settings} />
 
-      <main className="relative pt-[76px]">{children}</main>
+        <div id="site-content" className="relative pt-[76px]"><RouteTransition>{children}</RouteTransition></div>
 
-      <Footer lang={lang} cats={withProjects} />
+        <Footer lang={lang} cats={withProjects} settings={settings} />
+      </SmoothMotion>
+      </MotionConfig>
+      </div>
     </>
   );
 }

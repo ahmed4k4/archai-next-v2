@@ -2,9 +2,9 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Float, RoundedBox, Line } from "@react-three/drei";
-import { CatmullRomCurve3, Vector3 } from "three";
+import { AdditiveBlending, CatmullRomCurve3, Vector3 } from "three";
 import type { Group, Mesh } from "three";
-import { PALETTE, mulberry32 } from "./utils";
+import { PALETTE, MOTION, mulberry32 } from "./utils";
 
 /* ==================================================================== *
  * Every scene below is *symbolic* — the shape means something:
@@ -29,39 +29,80 @@ function scatter(count: number, x: number, y: number, z: number, seed: number) {
 }
 
 /* ==================================================================== *
- * 1. HOME — PRODUCT ECOSYSTEM
- * Quiet floating interface tiles and dimensional objects; deliberately no
- * animated strands, grid lines, or high-frequency visual noise.
+ * 1. HOME — DIGITAL CORE
+ * A compact metallic core framed by quiet, slow orbital rings. The former
+ * vertical-stream treatment was visually noisy and is intentionally removed.
  * ==================================================================== */
+
 export function HomeScene() {
-  const root = useRef<Group>(null);
-  const objects = useMemo(() => [
-    { p: [-5.8, 2.6, -4] as [number, number, number], s: [1.25, 0.82, 0.12] as [number, number, number], c: PALETTE.violet.base, r: [0.1, 0.2, -0.12] as [number, number, number] },
-    { p: [5.6, 1.4, -5] as [number, number, number], s: [1.05, 1.05, 0.16] as [number, number, number], c: PALETTE.mint.base, r: [0.2, -0.3, 0.12] as [number, number, number] },
-    { p: [-4.9, -2.8, -4.5] as [number, number, number], s: [0.72, 0.72, 0.72] as [number, number, number], c: PALETTE.mint.base, r: [0.2, 0.15, 0.1] as [number, number, number] },
-    { p: [4.4, -2.9, -5.5] as [number, number, number], s: [0.88, 0.88, 0.88] as [number, number, number], c: PALETTE.violet.base, r: [-0.15, 0.3, -0.1] as [number, number, number] },
-  ], []);
-  useFrame((state) => {
-    if (root.current) {
-      root.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.12) * 0.025;
-      root.current.position.y = Math.sin(state.clock.elapsedTime * 0.22) * 0.08;
+  const orbit = useRef<Group>(null);
+  const core = useRef<Group>(null);
+  const nodes = useMemo(() => {
+    const colors = [PALETTE.violet.base, PALETTE.mint.base, PALETTE.rose.base];
+    return Array.from({ length: 12 }, (_, i) => {
+      const angle = (i / 12) * Math.PI * 2;
+      const radius = 2.05;
+      return {
+        position: [Math.cos(angle) * radius, Math.sin(angle) * radius * 0.66, 0] as [number, number, number],
+        color: colors[i % colors.length],
+      };
+    });
+  }, []);
+
+  useFrame((state, delta) => {
+    if (orbit.current) orbit.current.rotation.z += delta * 0.035;
+    if (core.current) {
+      core.current.rotation.y += delta * 0.08;
+      core.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.35) * 0.05;
     }
   });
-  return <group ref={root}>
-    {objects.map((o, i) => <Float key={i} speed={0.28 + i * 0.05} floatIntensity={0.16} rotationIntensity={0.035}>
-      <group position={o.p} rotation={o.r}>
-        <RoundedBox args={o.s} radius={0.12} smoothness={4}>
-          <meshPhysicalMaterial color={o.c} metalness={0.42} roughness={0.32} clearcoat={0.7} transparent opacity={0.28} />
-        </RoundedBox>
-        {i < 2 && <group position={[-o.s[0] * 0.28, o.s[1] * 0.12, o.s[2] * 0.56]}>
-          {[0, 1, 2].map((j) => <mesh key={j} position={[j * 0.22, -j * 0.12, 0]}>
-            <boxGeometry args={[0.12, 0.045, 0.018]} />
-            <meshBasicMaterial color={i ? PALETTE.mint.light : PALETTE.violet.light} transparent opacity={0.32} />
-          </mesh>)}
-        </group>}
+
+  return (
+    <group>
+      <group ref={orbit}>
+        <mesh rotation={[0, 0, 0]}>
+          <torusGeometry args={[2.05, 0.018, 8, 112]} />
+          <meshBasicMaterial color={PALETTE.violet.light} transparent opacity={0.72} />
+        </mesh>
+        <mesh rotation={[Math.PI / 2.3, 0.2, 0.1]}>
+          <torusGeometry args={[2.38, 0.014, 8, 112]} />
+          <meshBasicMaterial color={PALETTE.mint.base} transparent opacity={0.52} />
+        </mesh>
+        {nodes.map((node, index) => (
+          <mesh key={index} position={node.position}>
+            <sphereGeometry args={[0.055, 12, 12]} />
+            <meshBasicMaterial color={node.color} toneMapped={false} />
+          </mesh>
+        ))}
       </group>
-    </Float>)}
-  </group>;
+      <Float speed={0.45} rotationIntensity={0.06} floatIntensity={0.12}>
+        <group ref={core}>
+          <RoundedBox args={[1.22, 1.22, 1.22]} radius={0.12} smoothness={6}>
+            <meshStandardMaterial
+              color={PALETTE.violet.dark}
+              emissive={PALETTE.violet.base}
+              emissiveIntensity={0.48}
+              metalness={0.9}
+              roughness={0.22}
+              transparent
+              opacity={0.9}
+            />
+          </RoundedBox>
+          <mesh scale={0.38}>
+            <icosahedronGeometry args={[1, 2]} />
+            <meshStandardMaterial
+              color={PALETTE.mint.base}
+              emissive={PALETTE.mint.base}
+              emissiveIntensity={1.15}
+              metalness={0.65}
+              roughness={0.18}
+              toneMapped={false}
+            />
+          </mesh>
+        </group>
+      </Float>
+    </group>
+  );
 }
 
 /* ==================================================================== *
@@ -74,10 +115,10 @@ export function ServicesScene() {
     const colors = [
       PALETTE.violet.base,
       PALETTE.mint.base,
+      PALETTE.rose.base,
       PALETTE.violet.light,
       PALETTE.mint.light,
-      PALETTE.violet.dark,
-      PALETTE.mint.base,
+      PALETTE.gold.base,
     ];
     return Array.from({ length: 6 }).map((_, i) => {
       const a = (i / 6) * Math.PI * 2;
@@ -198,8 +239,8 @@ export function IndustriesScene() {
     const colors = [
       PALETTE.violet.base,
       PALETTE.mint.base,
+      PALETTE.rose.base,
       PALETTE.violet.light,
-      PALETTE.mint.light,
     ];
     return Array.from({ length: 9 }).map((_, i) => ({
       x: (i - 4) * 1.6,
@@ -211,9 +252,10 @@ export function IndustriesScene() {
   }, []);
   return (
     <group position={[0, -3, -2]} rotation={[0.1, 0, 0]}>
-      <RoundedBox args={[18, 0.08, 7]} radius={0.12} smoothness={5} position={[0, -0.08, -0.2]} rotation={[0.05, 0, 0]}>
-        <meshPhysicalMaterial color={PALETTE.violet.dark} metalness={0.65} roughness={0.32} transparent opacity={0.22} />
-      </RoundedBox>
+      <gridHelper
+        args={[20, 20, PALETTE.violet.base, PALETTE.violet.dark]}
+        position={[0, -0.05, 0]}
+      />
       {towers.map((t, i) => (
         <Tower key={i} {...t} />
       ))}
@@ -457,10 +499,10 @@ export function InsightsScene() {
   const books = useMemo(() => {
     const rng = mulberry32(13);
     const colors = [
-      PALETTE.violet.light,
+      PALETTE.gold.base,
       PALETTE.violet.base,
       PALETTE.mint.base,
-      PALETTE.mint.light,
+      PALETTE.rose.base,
     ];
     return Array.from({ length: 12 }).map((_, i) => ({
       row: Math.floor(i / 4),
@@ -626,9 +668,9 @@ export function CaseStudiesScene() {
           />
         </mesh>
       ))}
-      <RoundedBox args={[15, 0.08, 5.5]} radius={0.1} smoothness={5} position={[0, -1.72, 0]} rotation={[-Math.PI / 2.4, 0, 0]}>
-        <meshPhysicalMaterial color={PALETTE.violet.dark} metalness={0.7} roughness={0.28} transparent opacity={0.2} />
-      </RoundedBox>
+      <mesh rotation={[-Math.PI / 2.4, 0, 0]} position={[0, -1.7, 0]}>
+        <gridHelper args={[22, 24, PALETTE.violet.base, PALETTE.violet.dark]} />
+      </mesh>
     </group>
   );
 }
@@ -772,7 +814,7 @@ export function ProjectScene() {
       [
         { pos: [-4, 1, -2], rot: 0.3, color: PALETTE.violet.base },
         { pos: [3.5, 1.2, -3], rot: -0.3, color: PALETTE.mint.base },
-        { pos: [-2.5, -1.5, -1.5], rot: 0.2, color: PALETTE.violet.light },
+        { pos: [-2.5, -1.5, -1.5], rot: 0.2, color: PALETTE.rose.base },
         { pos: [4, -1.4, -4], rot: -0.2, color: PALETTE.violet.light },
         { pos: [0.5, 2, -5], rot: 0, color: PALETTE.mint.light },
       ] as { pos: [number, number, number]; rot: number; color: string }[],
@@ -859,7 +901,7 @@ export function CategoryScene() {
                   ? PALETTE.mint.base
                   : i % 3 === 1
                     ? PALETTE.violet.base
-                    : PALETTE.violet.light
+                    : PALETTE.rose.base
               }
               emissiveIntensity={0.35}
               metalness={0.8}

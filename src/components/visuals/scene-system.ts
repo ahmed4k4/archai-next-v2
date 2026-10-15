@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { damp3, damp } from "maath/easing";
 import { Vector3 } from "three";
@@ -54,26 +54,6 @@ export const HEX = {
  * MOTION — rotation / pulse speed constants so every scene moves in
  * the same register instead of at arbitrary speeds.
  * ================================================================== */
-
-/** Shared, frame-safe document scroll progress for 3D rigs. */
-export function useScrollProgressRef() {
-  const progress = useRef(0);
-  const target = useRef(0);
-  useEffect(() => {
-    const update = () => {
-      const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-      target.current = Math.min(1, Math.max(0, window.scrollY / max));
-    };
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, []);
-  return { progress, target };
-}
 
 export const MOTION = {
   slow: 0.06,

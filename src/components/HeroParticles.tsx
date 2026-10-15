@@ -38,8 +38,10 @@ export default function HeroParticles() {
       canvas.height = Math.max(1, Math.floor(height * dpr));
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+      // Keep the hero constellation decorative rather than CPU-bound; this
+      // renderer performs neighbour checks on the main thread every frame.
       const count =
-        window.innerWidth < 640 ? 180 : window.innerWidth < 1024 ? 320 : 480;
+        window.innerWidth < 640 ? 96 : window.innerWidth < 1024 ? 168 : 240;
 
       particles = Array.from({ length: count }, (_, i) => {
         const y = 1 - (i / (count - 1)) * 2;

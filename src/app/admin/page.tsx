@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   FolderKanban,
+  FileText,
   Eye,
   Star,
   Users,
@@ -92,51 +93,36 @@ export default function AdminHome() {
     };
   }, [sb, ar]);
 
-  /* Deterministic 7-point sparkline derived from the series (falls back to a
-     gentle synthetic curve) — gives each KPI a live-looking trend line. */
-  const spark = (seed: number, up = true) =>
-    Array.from({ length: 7 }).map((_, i) => {
-      const base = Math.sin(i * 0.9 + seed) * 0.5 + 0.5;
-      const trend = up ? (i / 6) * 0.5 : 0.5 - (i / 6) * 0.3;
-      return Math.max(0.08, Math.min(1, base * 0.6 + trend));
-    });
-
+  // KPI values and supporting labels come from database RPC results only.
+  // Do not manufacture trend percentages or sparkline shapes when analytics data is absent.
   const cards = [
     {
       label: t("totalProjects"),
       value: stats.total_projects,
       icon: FolderKanban,
       tone: "violet",
-      trend: "+12%",
-      up: true,
-      points: spark(1, true),
+      description: ar ? "إجمالي السجلات في قاعدة البيانات" : "Records returned by the database",
     },
     {
       label: t("publishedProjects"),
       value: stats.published_projects,
       icon: TrendingUp,
       tone: "mint",
-      trend: "+8%",
-      up: true,
-      points: spark(2, true),
+      description: ar ? "مشروعات منشورة للعامة" : "Projects published publicly",
     },
     {
       label: t("featuredProjects"),
       value: stats.featured_projects,
       icon: Star,
       tone: "amber",
-      trend: "+3%",
-      up: true,
-      points: spark(3, true),
+      description: ar ? "مشروعات محددة كمميزة" : "Projects marked as featured",
     },
     {
       label: t("projectViews"),
       value: stats.project_views,
       icon: Eye,
       tone: "rose",
-      trend: "-4%",
-      up: false,
-      points: spark(4, false),
+      description: ar ? "مشاهدات مسجلة في التحليلات" : "Views recorded by analytics",
     },
   ];
 
@@ -214,29 +200,7 @@ export default function AdminHome() {
                 <div className="font-display text-3xl font-medium text-ink-0 tabular-nums">
                   {loading ? "—" : <AnimatedNumber value={card.value} />}
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-2">
-                  <span
-                    className={`inline-flex items-center gap-1 text-[10px] font-mono ${
-                      card.up ? "text-mint-300" : "text-rose-400"
-                    }`}
-                  >
-                    {card.up ? "↑" : "↓"} {card.trend}
-                  </span>
-                  {/* Sparkline */}
-                  <svg viewBox="0 0 60 20" className="w-16 h-5 shrink-0" aria-hidden>
-                    <polyline
-                      points={card.points
-                        .map((v: number, i: number) => `${i * 10},${20 - v * 18}`)
-                        .join(" ")}
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={card.up ? "text-mint-400/70" : "text-rose-400/70"}
-                    />
-                  </svg>
-                </div>
+                <p className="mt-2 text-[10px] leading-5 text-ink-4">{card.description}</p>
               </div>
             </motion.div>
           );
@@ -297,6 +261,12 @@ export default function AdminHome() {
                 icon: Sparkles,
                 title: t("categories"),
                 desc: t("manageCategories"),
+              },
+              {
+                href: "/admin/content",
+                icon: FileText,
+                title: t("contentPages"),
+                desc: ar ? "تحرير نصوص الصفحات والأسئلة وبيانات SEO" : "Edit page copy, FAQs, and SEO metadata",
               },
               {
                 href: "/admin/analytics",

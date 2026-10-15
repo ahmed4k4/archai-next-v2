@@ -38,7 +38,19 @@ const extra = {
 
 export const tr = (lang: Locale) => (k: string): string => (extra[lang] as Record<string, string>)?.[k] ?? (dict[lang] as Record<string, string>)?.[k] ?? dict.en[k as keyof typeof dict.en] ?? k;
 export const pick = (o: Record<string, any> | null | undefined, f: string, lang: Locale): string => o?.[`${f}_${lang}`] || o?.[`${f}_en`] || o?.[`${f}_ar`] || "";
-export const safeUrl = (u?: string | null): string => (/^https?:\/\//i.test(u || "") ? u! : "#");
+export const safeUrl = (u?: string | null): string | undefined => {
+  const value = u?.trim();
+  if (!value || !/^https?:\/\//i.test(value)) return undefined;
+
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+      ? parsed.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 /**
  * Resolve the best display image for a project, regardless of where the

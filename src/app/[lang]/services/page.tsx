@@ -1,6 +1,7 @@
 import MarketingPage from "@/components/marketing/MarketingPage";
 import { pageSeo } from "@/lib/seo";
 import { marketingContent } from "@/lib/marketing-content";
+import { getEditablePageCopy } from "@/lib/page-content";
 import { isLocale } from "@/lib/i18n";
 import { notFound } from "next/navigation";
 import type { Locale } from "@/lib/types";
@@ -12,8 +13,8 @@ export async function generateMetadata({
   params: { lang: string };
 }) {
   const lang = isLocale(params.lang) ? params.lang : "en";
-  const c = marketingContent(lang, "services");
-  return pageSeo(lang, "services", `${c.title} ${c.accent}`, c.description, {
+  const c = await getEditablePageCopy(lang, "services", marketingContent(lang, "services"));
+  return pageSeo(lang, "services", c.seoTitle || `${c.title} ${c.accent}`, c.seoDescription || c.description, {
     keywords:
       lang === "ar"
         ? ["تطوير ويب", "أنظمة ERP", "ذكاء اصطناعي", "أنظمة مدمجة", "تطبيقات موبايل"]
@@ -27,10 +28,10 @@ export async function generateMetadata({
   });
 }
 
-export default function Page({ params }: { params: { lang: string } }) {
+export default async function Page({ params }: { params: { lang: string } }) {
   if (!isLocale(params.lang)) notFound();
   const lang = params.lang as Locale;
-  const c = marketingContent(lang, "services");
+  const c = await getEditablePageCopy(lang, "services", marketingContent(lang, "services"));
 
   const serviceItems = c.cards.map((card: any) => ({
     name: card.title,
@@ -53,12 +54,13 @@ export default function Page({ params }: { params: { lang: string } }) {
         accent={c.accent}
         description={c.description}
         primary={lang === "ar" ? "ابدأ مشروعك" : "Start your project"}
-        primaryHref="https://landing-ideas.web.app/"
+        primaryHref={`/${lang}/contact`}
         secondary={lang === "ar" ? "استكشف المشاريع" : "Explore projects"}
-        secondaryHref={`/${lang}#list`}
+        secondaryHref={`/${lang}/projects`}
         cards={c.cards}
         outroTitle={c.outroTitle}
         outroText={c.outroText}
+        sections={c.sections as Record<string, unknown> | null}
         accentColor="violet"
       />
     </>

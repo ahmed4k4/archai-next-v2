@@ -117,7 +117,7 @@ export default function QABubbles({ className }: { className?: string }) {
   }, []);
 
   return (
-    <Scene3D className={className} camera={{ position: [0, 0, 7.5], fov: 47 }}>
+    <Scene3D fallbackKind="faq" className={className} camera={{ position: [0, 0, 7.5], fov: 47 }}>
       <Spinner>
         {bubbles.map((b, i) => (
           <Bubble key={i} {...b} />

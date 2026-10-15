@@ -81,7 +81,7 @@ export default function KnowledgeFragments({
   });
 
   return (
-    <Scene3D className={className} camera={{ position: [0, 0, 7.2], fov: 46 }}>
+    <Scene3D fallbackKind="knowledge" className={className} camera={{ position: [0, 0, 7.2], fov: 46 }}>
       <Spinner>
         {web.map(([a, b], i) => (
           <Line

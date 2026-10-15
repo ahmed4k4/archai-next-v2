@@ -10,38 +10,44 @@ const LOCALE_MAP: Record<Locale, string> = {
 /* ============================================================
    ORGANIZATION — Root organization schema
    ============================================================ */
+function safeAbsoluteUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const text = value.trim();
+  if (text.startsWith("/") && !text.startsWith("//")) return `${SITE_URL}${text}`;
+  try {
+    const url = new URL(text);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function organizationSchema(lang: Locale, settings?: SiteSettings) {
+  const social = settings?.social && typeof settings.social === "object"
+    ? Object.values(settings.social as Record<string, unknown>).filter(
+        (value): value is string => typeof value === "string" && /^https?:\/\//i.test(value.trim())
+      ).map((value) => value.trim())
+    : [];
+
+  const root = (settings || {}) as Record<string, unknown>;
+  const logo = safeAbsoluteUrl(root.logo_url) || `${SITE_URL}/assets/logo.png`;
+  const image = safeAbsoluteUrl(root.default_seo_image) || `${SITE_URL}/${lang}/opengraph-image`;
+  const description = pick(root, "home_desc", lang) || (lang === "ar"
+    ? "أركاي للحلول البرمجية: تطوير المنتجات الرقمية ومنصات الويب وتكامل الذكاء الاصطناعي والأنظمة المدمجة وإنترنت الأشياء."
+    : "Archai Solutions designs and builds digital products, web platforms, AI-powered workflows, and embedded/IoT systems.");
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${SITE_URL}/#organization`,
     name: settings?.company_name || "Archai Solutions",
-    alternateName: lang === "ar" ? "أركاي للحلول البرمجية" : "Archai Integrated Systems",
+    alternateName: "أركاي للحلول البرمجية",
     url: SITE_URL,
     logo: {
       "@type": "ImageObject",
-      url: `${SITE_URL}/assets/logo.png`,
-      width: 512,
-      height: 512,
+      url: logo,
     },
-    image: `${SITE_URL}/opengraph-image`,
-    description:
-      lang === "ar"
-        ? "أركاي للحلول البرمجية: تطوير المنتجات الرقمية ومنصات الويب وتكامل الذكاء الاصطناعي والأنظمة المدمجة وإنترنت الأشياء."
-        : "Archai Solutions designs and builds digital products, web platforms, AI-powered workflows, and embedded/IoT systems.",
-    ...(settings?.contact_email ? { email: String(settings.contact_email) } : {}),
-    ...(settings?.address_city || settings?.address_country ? {
-      address: {
-        "@type": "PostalAddress",
-        ...(settings.address_city ? { addressLocality: String(settings.address_city) } : {}),
-        ...(settings.address_country ? { addressCountry: String(settings.address_country) } : {}),
-      },
-    } : {}),
-    areaServed: [
-      { "@type": "Country", name: "Egypt" },
-      { "@type": "Place", name: "Middle East" },
-      { "@type": "Place", name: "Worldwide" },
-    ],
+    image,
+    description,
     knowsAbout: [
       "Software Development",
       "Web Applications",
@@ -53,36 +59,22 @@ export function organizationSchema(lang: Locale, settings?: SiteSettings) {
       "Mobile Applications",
       "Cloud Architecture",
     ],
-    sameAs: [
-      settings?.linkedin_url,
-      settings?.facebook_url,
-      settings?.instagram_url,
-      settings?.github_url,
-      settings?.twitter_url,
-    ].filter((value): value is string => typeof value === "string" && value.length > 0),
+    ...(social.length ? { sameAs: Array.from(new Set(social)) } : {}),
   };
 }
 
 /* ============================================================
-   WEBSITE — Root website schema with SearchAction
+   WEBSITE — Website identity (no SearchAction until a real search URL exists)
    ============================================================ */
-export function websiteSchema(lang: Locale) {
+export function websiteSchema(lang: Locale, settings?: SiteSettings) {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "@id": `${SITE_URL}/#website`,
     url: `${SITE_URL}/${lang}`,
-    name: "Archai Solutions",
+    name: settings?.company_name || "Archai Solutions",
     inLanguage: LOCALE_MAP[lang],
     publisher: { "@id": `${SITE_URL}/#organization` },
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${SITE_URL}/${lang}/search?q={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
   };
 }
 
@@ -116,7 +108,7 @@ export function projectSchema(
   const title = pick(project, "title", lang);
   const summary = pick(project, "summary", lang);
   const description = pick(project, "description", lang) || summary;
-  const url = `${SITE_URL}/${lang}/projects/${project.id}`;
+  const url = `${SITE_URL}/${lang}/projects/${project.slug || project.id}`;
   const images = [
     project.cover_image,
     project.featured_image,

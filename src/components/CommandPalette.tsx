@@ -38,7 +38,7 @@ export default function CommandPalette({
   const commands: Cmd[] = useMemo(() => {
     const pages: Cmd[] = [
       { id: "home", label: T("home"), href: `/${lang}`, section: ar ? "صفحات" : "Pages", icon: "⌂" },
-      { id: "projects", label: T("projects"), href: `/${lang}#list`, section: ar ? "صفحات" : "Pages", icon: "◫" },
+      { id: "projects", label: T("projects"), href: `/${lang}/projects`, section: ar ? "صفحات" : "Pages", icon: "◫" },
       { id: "services", label: T("services"), href: `/${lang}/services`, section: ar ? "صفحات" : "Pages", icon: "⌘" },
       { id: "industries", label: T("industries"), href: `/${lang}/industries`, section: ar ? "صفحات" : "Pages", icon: "▦" },
       { id: "about", label: T("about"), href: `/${lang}/about`, section: ar ? "الشركة" : "Company", icon: "◉" },

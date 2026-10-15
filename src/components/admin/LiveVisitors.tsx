@@ -10,22 +10,37 @@ export default function LiveVisitors() {
 
   useEffect(() => {
     let alive = true;
+    let inFlight = false;
 
     async function poll() {
-      // last 5 minutes sessions
-      const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { count: c } = await sb
-        .from("visitor_sessions")
-        .select("*", { count: "exact", head: true })
-        .gte("last_seen_at", since);
-      if (alive) setCount(c || 0);
+      // Skip hidden tabs and overlapping requests: this is an approximate live metric,
+      // so a 60-second refresh is enough and substantially cheaper than 15-second polling.
+      if (!alive || document.hidden || inFlight) return;
+      inFlight = true;
+      try {
+        const since = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { count: c, error } = await sb
+          .from("visitor_sessions")
+          .select("*", { count: "exact", head: true })
+          .gte("last_seen_at", since);
+        if (alive && !error) setCount(c || 0);
+      } catch {
+        // Keep the last successful count when the network briefly fails.
+      } finally {
+        inFlight = false;
+      }
     }
 
-    poll();
-    const id = setInterval(poll, 15000);
+    const onVisibilityChange = () => {
+      if (!document.hidden) void poll();
+    };
+    void poll();
+    const id = window.setInterval(() => void poll(), 60_000);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       alive = false;
-      clearInterval(id);
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [sb]);
 

@@ -125,7 +125,7 @@ export default function WorkflowGraph({ className }: { className?: string }) {
   );
 
   return (
-    <Scene3D className={className} camera={{ position: [0, 0, 6.8], fov: 45 }}>
+    <Scene3D fallbackKind="workflow" className={className} camera={{ position: [0, 0, 6.8], fov: 45 }}>
       <Spinner>
         {/* edges */}
         {edges.map((e, i) => (

@@ -4,11 +4,15 @@ import { LOCALES } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/supabase";
 
 const STATIC_PAGES = [
+  { path: "projects", priority: 0.95, changeFrequency: "weekly" as const },
   { path: "services", priority: 0.9, changeFrequency: "monthly" as const },
   { path: "industries", priority: 0.85, changeFrequency: "monthly" as const },
   { path: "about", priority: 0.8, changeFrequency: "monthly" as const },
   { path: "process", priority: 0.75, changeFrequency: "monthly" as const },
+  { path: "technologies", priority: 0.72, changeFrequency: "monthly" as const },
   { path: "insights", priority: 0.7, changeFrequency: "weekly" as const },
+  { path: "engineering-notes", priority: 0.68, changeFrequency: "weekly" as const },
+  { path: "blog", priority: 0.66, changeFrequency: "weekly" as const },
   { path: "case-studies", priority: 0.75, changeFrequency: "monthly" as const },
   { path: "careers", priority: 0.65, changeFrequency: "monthly" as const },
   { path: "faq", priority: 0.7, changeFrequency: "monthly" as const },
@@ -17,15 +21,12 @@ const STATIC_PAGES = [
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { cats, projects } = await getHome();
-  const now = new Date();
-
   return LOCALES.flatMap((lang) => {
     const urls: MetadataRoute.Sitemap = [];
 
     /* Home */
     urls.push({
       url: `${SITE_URL}/${lang}`,
-      lastModified: now,
       priority: 1,
       changeFrequency: "weekly",
       alternates: {
@@ -41,7 +42,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     STATIC_PAGES.forEach((page) => {
       urls.push({
         url: `${SITE_URL}/${lang}/${page.path}`,
-        lastModified: now,
         priority: page.priority,
         changeFrequency: page.changeFrequency,
         alternates: {
@@ -58,7 +58,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     cats.forEach((cat) => {
       urls.push({
         url: `${SITE_URL}/${lang}/categories/${cat.slug}`,
-        lastModified: now,
         priority: 0.8,
         changeFrequency: "weekly",
         alternates: {
@@ -80,17 +79,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         ...(p.project_images?.map((img) => img.public_url) || []),
       ].filter(Boolean) as string[];
 
+      const projectPath = p.slug || p.id;
       urls.push({
-        url: `${SITE_URL}/${lang}/projects/${p.id}`,
-        lastModified: p.updated_at || p.created_at || now,
+        url: `${SITE_URL}/${lang}/projects/${projectPath}`,
         priority: p.featured ? 0.85 : 0.7,
         changeFrequency: "monthly",
         ...(images.length > 0 && { images: Array.from(new Set(images)) }),
         alternates: {
           languages: {
-            ar: `${SITE_URL}/ar/projects/${p.id}`,
-            en: `${SITE_URL}/en/projects/${p.id}`,
-            "x-default": `${SITE_URL}/en/projects/${p.id}`,
+            ar: `${SITE_URL}/ar/projects/${projectPath}`,
+            en: `${SITE_URL}/en/projects/${projectPath}`,
+            "x-default": `${SITE_URL}/en/projects/${projectPath}`,
           },
         },
       });

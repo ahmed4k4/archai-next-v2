@@ -174,7 +174,7 @@ export default function ServiceConstellation({
   }, []);
 
   return (
-    <Scene3D className={className} camera={{ position: [0, 0, 7], fov: 45 }}>
+    <Scene3D fallbackKind="constellation" className={className} camera={{ position: [0, 0, 7], fov: 45 }}>
       <Spinner>
         <Core />
         {NODES.map((n, i) => (

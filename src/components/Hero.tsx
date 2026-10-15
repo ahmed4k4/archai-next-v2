@@ -1,257 +1,144 @@
 "use client";
+
 import Link from "next/link";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
-import dynamic from "next/dynamic";
+import { motion, useReducedMotion } from "framer-motion";
 import { tr, pick } from "@/lib/i18n";
 import type { Locale } from "@/lib/types";
 import { MagneticButton, AnimatedNumber } from "./motion";
-import { textReveal } from "@/lib/motion";
-
-const DynamicVisual = dynamic(() => import("./visuals/DynamicVisual"), { ssr: false, loading: () => null });
+import LazyVisual from "./visuals/LazyVisual";
 
 type HeroProps = {
   lang: Locale;
   settings: Record<string, any>;
   count: number;
+  categoryCount?: number;
+  primaryLabel?: string;
+  secondaryLabel?: string;
+  primaryHref?: string;
+  secondaryHref?: string;
+  capabilityLabels?: string[];
+  eyebrow?: string;
 };
 
-export default function Hero({ lang, settings, count }: HeroProps) {
+export default function Hero({ lang, settings, count, categoryCount = 0, primaryLabel, secondaryLabel, primaryHref, secondaryHref, capabilityLabels, eyebrow }: HeroProps) {
   const T = tr(lang);
   const ar = lang === "ar";
-  const ref = useRef<HTMLElement>(null);
-
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
-  const y = useTransform(scrollYProgress, [0, 1], [0, 200]);
-  const opacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 1], [1, 0.92]);
-
-  const titleAr = settings.home_title_ar || tr("ar")("heroT");
-  const titleEn = settings.home_title_en || tr("en")("heroT");
+  const reduce = useReducedMotion();
+  const localizedTitle = ar
+    ? (settings.home_title_ar || T("heroT"))
+    : (settings.home_title_en || T("heroT"));
   const desc = pick(settings, "home_desc", lang) || T("heroDesc");
+  const appear = (delay = 0) => reduce
+    ? { initial: false as const, animate: { opacity: 1, y: 0 }, transition: { duration: 0 } }
+    : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.42, delay: Math.min(delay, 0.28), ease: [0.2, 0.75, 0.25, 1] as [number, number, number, number] } };
+
+  const facts = [
+    { value: count, label: ar ? "مشروع منشور" : "Published projects" },
+    ...(categoryCount > 0 ? [{ value: categoryCount, label: ar ? "مجال تخصصي" : "Expertise areas" }] : []),
+    ...(Number(settings.years_experience || 0) > 0
+      ? [{ value: Number(settings.years_experience), label: ar ? "سنوات خبرة" : "Years of experience" }]
+      : []),
+  ];
+  const capabilityColors = ["#4ce2d0", "#7c5cff", "#ad97ff"];
+  const savedCapabilities = Array.isArray(capabilityLabels)
+    ? capabilityLabels.map((label) => label.trim()).filter(Boolean).slice(0, 3)
+    : [];
+  const capabilities = (savedCapabilities.length ? savedCapabilities : [T("metaEmbedded"), T("metaWeb"), T("metaMobile")])
+    .map((label, index) => ({ label, color: capabilityColors[index] }));
+  const brandName = typeof settings.company_name === "string" && settings.company_name.trim()
+    ? settings.company_name.trim()
+    : "ARCHAI";
+  const brandTagline = (ar ? settings.brand_tagline_ar : settings.brand_tagline_en) || (ar ? "أنظمة متكاملة" : "INTEGRATED SYSTEMS");
 
   return (
     <section
-      ref={ref}
       id="hero"
-      className="relative min-h-[92vh] flex items-center overflow-hidden hero-premium"
-      aria-label="Hero"
+      className="relative isolate flex min-h-[min(900px,100svh)] items-center overflow-hidden"
+      aria-label={ar ? "مقدمة أركاي" : "Archai introduction"}
     >
-      {/* Calm atmospheric lighting only. The previous animated grid/line field is removed. */}
-      <div className="hero-atmosphere absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="hero-light-pool hero-light-pool-violet" />
-        <div className="hero-light-pool hero-light-pool-mint" />
-      </div>
-
-      {/* ============================================================
-          LAYER 3: 3D Scene (right side)
-          ============================================================ */}
+      {/* The planet lives on the side opposite the copy, with a soft fade into the text. */}
       <div
-        className="absolute inset-y-0 right-[-6%] w-full lg:w-[58%] pointer-events-none opacity-90 hero-visual-stage"
-        aria-hidden
+        className={`pointer-events-none absolute ${ar ? "left-0" : "right-0"} top-14 h-[58%] w-[62%] max-w-[300px] sm:inset-y-0 sm:h-auto sm:w-[43%] sm:max-w-[380px] lg:w-[37%] lg:max-w-[440px]`}
+        aria-hidden="true"
       >
-        <DynamicVisual name="HeroCore" className="absolute inset-0" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_54%_48%,rgba(69,101,196,0.13),transparent_60%)]" />
+        <LazyVisual name="HeroCore" className="absolute inset-0" rootMargin="0px" />
+        <div className={`absolute inset-0 ${ar ? "bg-gradient-to-l" : "bg-gradient-to-r"} from-[var(--bg-0)] via-[color-mix(in_srgb,var(--bg-0)_55%,transparent)] to-transparent`} />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[var(--bg-0)] to-transparent" />
       </div>
 
-      {/* ============================================================
-          LAYER 6: Content
-          ============================================================ */}
-      <motion.div
-        style={{ y, opacity, scale }}
-        className="wrap relative z-10 py-24"
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          {/* Compact engineering signature — avoids competing with the 3D hero object. */}
-          <motion.div
-            className="lg:col-span-3 order-2 lg:order-1 hidden lg:block hero-signature-slot"
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.45 }}
-          >
-            <div className="hero-signature-card">
-              <span className="hero-signature-mark" aria-hidden="true"><span /><span /><span /></span>
-              <div className="font-mono text-[10px] tracking-[.2em] text-ink-4 uppercase">ARCHAI / ENGINEERING</div>
-              <div className="mt-3 text-sm text-ink-2">{ar ? "منظومة تقنية مترابطة" : "Connected by design"}</div>
-              <div className="mt-5 flex items-center justify-between gap-3 border-t border-violet-500/15 pt-4">
-                <span className="text-xs text-ink-3">{ar ? "مشاريع المعرض" : "Showcase projects"}</span>
-                <strong className="font-display text-2xl text-ink-0"><AnimatedNumber value={count} /></strong>
-              </div>
-            </div>
+      <div className="wrap relative z-10 grid w-full grid-cols-1 items-center gap-7 py-24 md:py-28 lg:grid-cols-[1.12fr_.88fr] lg:gap-8">
+        <div className="max-w-3xl lg:max-w-[42rem]">
+          <motion.div {...appear(0)} className="mb-6 inline-flex items-center gap-2 rounded-full border border-mint-500/25 bg-mint-500/[0.07] px-3.5 py-2 backdrop-blur-sm">
+            <span className="relative grid size-2 place-items-center">
+              <span className="absolute size-2 rounded-full bg-mint-300 opacity-30 motion-safe:animate-ping" />
+              <span className="relative size-1.5 rounded-full bg-mint-300" />
+            </span>
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.18em] text-mint-300">
+              {ar ? `أهلاً بكم في ${brandName}` : `WELCOME TO ${brandName.toLocaleUpperCase("en")}` }
+            </span>
           </motion.div>
 
-          {/* Main content */}
-          <div className="lg:col-span-9 order-1 lg:order-2 hero-copy">
-            {/* Welcome badge */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.05 }}
-              className="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-mint-500/30 bg-mint-500/10"
-            >
-              <motion.span
-                className="w-1.5 h-1.5 rounded-full bg-mint-400"
-                animate={{ opacity: [1, 0.3, 1] }}
-                transition={{ duration: 1.8, repeat: Infinity }}
-              />
-              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-mint-300">
-                {ar ? "أهلاً بكم في أركاي" : "WELCOME TO ARCHAI"}
-              </span>
-            </motion.div>
+          <motion.p {...appear(0.08)} className="mb-4 flex items-center gap-3 text-[11px] font-mono font-semibold uppercase tracking-[0.2em] text-violet-300">
+            <span className="h-px w-8 bg-current" />{eyebrow || T("heroEyebrow")}
+          </motion.p>
 
-            {/* Eyebrow */}
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-violet-500/10 border border-violet-500/30 backdrop-blur-sm"
-            >
-              <motion.span
-                className="w-2 h-2 rounded-full bg-mint-400 shadow-glow-mint"
-                animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-200">
-                {T("heroEyebrow")}
-              </span>
-            </motion.div>
+          <motion.h1
+            {...appear(0.16)}
+            className="font-display text-[clamp(2.55rem,5.7vw,5.2rem)] font-medium leading-[1.05] tracking-tight text-ink-0"
+          >
+            <span className="bg-grad-text-light bg-clip-text text-transparent dark:bg-grad-text">{localizedTitle}</span>
+          </motion.h1>
 
-            {/* Title */}
-            <motion.h1
-              className="mt-8 font-display font-medium tracking-tight leading-[0.95] text-[clamp(2.5rem,8vw,6rem)]"
-              variants={textReveal}
-              initial="hidden"
-              animate="show"
-            >
-              <span className="block text-ink-0">{titleAr}</span>
-              <span
-                className="block bg-grad-text-light dark:bg-grad-text bg-clip-text text-transparent animate-gradient-flow bg-[length:200%_100%]"
-                dir="ltr"
-              >
-                {titleEn}
-              </span>
-            </motion.h1>
+          <motion.p {...appear(0.28)} className="mt-7 max-w-2xl text-base leading-8 text-ink-3 md:text-lg">
+            {desc}
+          </motion.p>
 
-            {/* Description */}
-            <motion.p
-              className="mt-8 text-lg lg:text-xl leading-relaxed text-ink-3 max-w-2xl"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.7 }}
-            >
-              {desc}
-            </motion.p>
+          <motion.div {...appear(0.38)} className="mt-9 flex flex-wrap gap-3">
+            <MagneticButton href={primaryHref || `/${lang}/projects`} className="btn-primary">
+              {primaryLabel || T("ctaExplore")}
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 5l7 7-7 7" />
+              </svg>
+            </MagneticButton>
+            <Link href={secondaryHref || `/${lang}/about`} className="btn-ghost">
+              {secondaryLabel || (ar ? "عن أركاي" : "About Archai")} <span aria-hidden="true">↗</span>
+            </Link>
+          </motion.div>
 
-            {/* Actions */}
-            <motion.div
-              className="mt-10 flex flex-wrap gap-4"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.9 }}
-            >
-              <MagneticButton href="#list" className="btn-primary">
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="M5 12h14M13 5l7 7-7 7" />
-                </svg>
-                {T("ctaExplore")}
-              </MagneticButton>
-              <Link href="#sl" className="btn-ghost">
-                ★ {T("ctaFeatured")}
-              </Link>
-            </motion.div>
-
-            {/* Meta strip */}
-            {/* Stats */}
-            <motion.div
-              className="mt-10 grid grid-cols-3 gap-4 max-w-lg"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 1.0 }}
-            >
-              {[
-                { v: count, l: ar ? "مشروع في المعرض" : "Projects showcased" },
-                { v: 2, l: ar ? "لغتان للموقع" : "Site languages" },
-                { v: 4, l: ar ? "مراحل للتنفيذ" : "Delivery stages" },
-              ].map((s) => (
-                <div key={s.l}>
-                  <div className="font-display text-3xl font-medium bg-grad-text-light dark:bg-grad-text bg-clip-text text-transparent">
-                    <AnimatedNumber value={s.v} />
-                  </div>
-                  <div className="mt-1 text-[10px] font-mono uppercase tracking-widest text-ink-4">
-                    {s.l}
-                  </div>
+          <motion.div {...appear(0.48)} className={`mt-10 grid max-w-xl ${facts.length > 2 ? "grid-cols-3" : "grid-cols-2"} gap-3 border-t border-violet-500/15 pt-6 sm:gap-6`}>
+            {facts.map((fact) => (
+              <div key={fact.label} className="min-w-0">
+                <div className="font-display text-2xl font-medium text-ink-0 md:text-3xl">
+                  <AnimatedNumber value={fact.value} />
                 </div>
-              ))}
-            </motion.div>
+                <div className="mt-1.5 max-w-[12rem] text-[10px] leading-5 text-ink-4 md:text-xs">{fact.label}</div>
+              </div>
+            ))}
+          </motion.div>
 
-            <motion.div
-              className="mt-8 pt-6 border-t border-violet-500/15 flex flex-wrap gap-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 1.1 }}
-            >
-              {[
-                { label: T("metaEmbedded"), color: "#4ce2d0" },
-                { label: T("metaWeb"), color: "#7c5cff" },
-                { label: T("metaMobile"), color: "#ad97ff" },
-              ].map((item, i) => (
-                <motion.div
-                  key={item.label}
-                  className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.12em] text-ink-3"
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 1.2 + i * 0.1 }}
-                >
-                  <motion.span
-                    className="w-2 h-2 rounded-full"
-                    style={{
-                      background: item.color,
-                      boxShadow: `0 0 12px ${item.color}`,
-                    }}
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.6, 1, 0.6] }}
-                    transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.4 }}
-                  />
-                  {item.label}
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
+          <motion.div {...appear(0.56)} className="mt-6 flex flex-wrap gap-x-5 gap-y-3">
+            {capabilities.map((item) => (
+              <span key={item.label} className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.1em] text-ink-3 md:text-[11px]">
+                <span className="size-1.5 rounded-full" style={{ backgroundColor: item.color, boxShadow: `0 0 9px ${item.color}55` }} />
+                {item.label}
+              </span>
+            ))}
+          </motion.div>
         </div>
-      </motion.div>
+        <div className="hidden min-h-[320px] lg:block" aria-hidden="true" />
+      </div>
 
-      {/* ============================================================
-          LAYER 7: Scroll indicator
-          ============================================================ */}
       <motion.a
-        href="#list"
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 text-ink-4 hover:text-mint-400 transition-colors"
+        href="#home-overview"
+        className="absolute bottom-7 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2 text-ink-4 transition-colors hover:text-mint-300"
         aria-label={T("scroll")}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.6, duration: 0.6 }}
+        initial={reduce ? { opacity: 1 } : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: reduce ? 0 : 0.8, duration: reduce ? 0 : 0.4 }}
       >
-        <div className="w-6 h-10 rounded-full border-2 border-current relative overflow-hidden">
-          <motion.div
-            className="absolute top-2 left-1/2 -translate-x-1/2 w-1 h-2 rounded-full bg-current"
-            animate={{ y: [0, 12, 0], opacity: [1, 0.3, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
-        </div>
-        <span className="text-[10px] font-mono uppercase tracking-[0.2em]">
-          {T("scroll")}
-        </span>
+        <span className="text-[9px] font-mono uppercase tracking-[0.22em]">{T("scroll")}</span>
+        <span className="grid size-7 place-items-center rounded-full border border-current/25 text-sm" aria-hidden="true">↓</span>
       </motion.a>
     </section>
   );

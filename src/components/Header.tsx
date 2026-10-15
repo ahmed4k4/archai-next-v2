@@ -1,14 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback, type MouseEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import {
   Search,
   Sun,
   Moon,
-  Bell,
   ArrowUpRight,
   Building2,
   Briefcase,
@@ -21,39 +20,98 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { pick, tr } from "@/lib/i18n";
-import type { Locale } from "@/lib/types";
+import type { Locale, SiteSettings } from "@/lib/types";
+import { resolveSiteNavigation, type SiteNavigationItem } from "@/lib/site-navigation";
 import CommandPalette from "./CommandPalette";
 
 type HeaderProps = {
   lang: Locale;
   cats: any[];
+  settings?: SiteSettings;
 };
 
-type NavItem = {
+type NavItem = SiteNavigationItem & { icon: LucideIcon };
+
+const ICON_BY_ROUTE: Record<string, LucideIcon> = {
+  about: Building2,
+  services: Layers,
+  projects: Briefcase,
+  industries: Cpu,
+  process: Workflow,
+  insights: BookOpen,
+  "case-studies": Briefcase,
+  careers: Briefcase,
+  faq: HelpCircle,
+  contact: Mail,
+};
+
+function safeBrandImage(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "/assets/logo.png";
+  const input = value.trim();
+  if (input.startsWith("/") && !input.startsWith("//")) return input;
+  try {
+    const parsed = new URL(input);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.toString() : "/assets/logo.png";
+  } catch {
+    return "/assets/logo.png";
+  }
+}
+
+type StableNavLinkProps = {
   href: string;
-  key?: string;
-  labelAr?: string;
-  labelEn?: string;
-  icon: LucideIcon;
-  descAr?: string;
-  descEn?: string;
+  label: string;
+  active: boolean;
+  onIntent: (href: string) => void;
 };
 
-const COMPANY_LINKS: NavItem[] = [
-  { href: "about", key: "about", icon: Building2 },
-  { href: "services", key: "services", icon: Layers },
-  { href: "industries", key: "industries", icon: Cpu },
-  { href: "process", key: "process", icon: Workflow },
-  { href: "insights", key: "insights", icon: BookOpen },
-  { href: "case-studies", labelAr: "دراسات الحالة", labelEn: "Case studies", icon: Briefcase },
-  { href: "careers", labelAr: "الوظائف", labelEn: "Careers", icon: Briefcase },
-  { href: "faq", labelAr: "الأسئلة الشائعة", labelEn: "FAQ", icon: HelpCircle },
-  { href: "contact", key: "contact", icon: Mail },
-];
+/** Stable component identity prevents the primary navigation links from remounting
+ * whenever Header state changes (scroll, theme, menus). Prefetching on pointer/focus
+ * also avoids a cold first click on the projects route in production. */
+function StableNavLink({ href, label, active, onIntent }: StableNavLinkProps) {
+  const prefetchRoute = () => onIntent(href);
+  return (
+    <Link
+      href={href}
+      // Avoid eager RSC prefetch for every visible nav item; warm the route on real user intent.
+      // Navigation itself stays native to Next <Link> so there is only one router interception.
+      prefetch={false}
+      onMouseEnter={prefetchRoute}
+      onTouchStart={prefetchRoute}
+      onFocus={prefetchRoute}
+      aria-current={active ? "page" : undefined}
+      className={`group relative rounded-lg px-3 py-2 text-sm transition-colors hover:bg-violet-500/10 ${
+        active ? "font-semibold text-ink-0" : "font-medium text-ink-2 hover:text-ink-0"
+      }`}
+    >
+      {label}
+      <span
+        className={`pointer-events-none absolute bottom-1 left-3 right-3 h-px origin-center bg-grad-signal transition-transform duration-300 ${
+          active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+        }`}
+      />
+    </Link>
+  );
+}
 
-export default function Header({ lang, cats }: HeaderProps) {
+export default function Header({ lang, cats, settings }: HeaderProps) {
   const T = tr(lang);
   const ar = lang === "ar";
+  const settingsRoot = (settings || {}) as Record<string, unknown>;
+  const companyName = typeof settingsRoot.company_name === "string" && settingsRoot.company_name.trim()
+    ? settingsRoot.company_name.trim()
+    : "ARCHAI";
+  const brandTagline = (ar ? settingsRoot.brand_tagline_ar : settingsRoot.brand_tagline_en);
+  const companyTagline = typeof brandTagline === "string" && brandTagline.trim()
+    ? brandTagline.trim()
+    : "INTEGRATED SYSTEMS";
+  const logoUrl = safeBrandImage(settingsRoot.logo_url);
+  const configuredNavigation = resolveSiteNavigation(settingsRoot.navigation);
+  const companyLinks: NavItem[] = configuredNavigation.map((item) => ({
+    ...item,
+    icon: ICON_BY_ROUTE[item.href] || Briefcase,
+  }));
+  const primaryLinks = companyLinks.filter((item) => ["services", "industries", "projects"].includes(item.href));
+  const dropdownLinks = companyLinks.filter((item) => !["services", "industries", "projects"].includes(item.href));
   const pathname = usePathname() || `/${lang}`;
   const other = ar ? "en" : "ar";
   const alt = pathname.replace(/^\/(ar|en)/, "/" + other);
@@ -121,40 +179,28 @@ export default function Header({ lang, cats }: HeaderProps) {
     const h = document.documentElement;
     const v = h.dataset.theme === "dark" ? "light" : "dark";
     h.dataset.theme = v;
-    window.dispatchEvent(new Event("archai:theme-change"));
     setTheme(v);
     try {
       localStorage.theme = v;
     } catch {}
   };
 
-  const labelOf = (item: NavItem) =>
-    item.key ? T(item.key) : ar ? item.labelAr : item.labelEn;
+  const closeNavigationMenus = useCallback(() => {
+    setCompanyOpen(false);
+    setCatsOpen(false);
+    setMobileOpen(false);
+  }, []);
 
-  const isActive = (href: string) =>
-    pathname === href ||
-    (href !== `/${lang}` && pathname.startsWith(href)) ||
-    (href === `/${lang}` && pathname === `/${lang}`);
+  const handleInternalLinkClick = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+    // Keep Next Link's native App Router interception intact. Do not preventDefault or
+    // call router.push here: Link must remain the single owner of this navigation.
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    closeNavigationMenus();
+  }, [closeNavigationMenus]);
 
-  /** Desktop nav link with an animated underline + active state. */
-  const NavLink = ({ href, label }: { href: string; label: string }) => {
-    const active = isActive(href);
-    return (
-      <Link
-        href={href}
-        className={`group relative px-3 py-2 text-sm transition-colors rounded-lg hover:bg-violet-500/10 ${
-          active ? "text-ink-0 font-semibold" : "text-ink-2 font-medium hover:text-ink-0"
-        }`}
-      >
-        {label}
-        <span
-          className={`pointer-events-none absolute bottom-1 left-3 right-3 h-px origin-center bg-grad-signal transition-transform duration-300 ${
-            active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
-          }`}
-        />
-      </Link>
-    );
-  };
+  const labelOf = (item: NavItem) => (ar ? item.labelAr : item.labelEn) || item.href;
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <>
@@ -188,8 +234,8 @@ export default function Header({ lang, cats }: HeaderProps) {
                 transition={{ duration: 0.3 }}
               >
                 <img
-                  src="/assets/logo.png"
-                  alt="Archai"
+                  src={logoUrl}
+                  alt={companyName}
                   className="w-full h-full object-contain"
                 />
                 <motion.div
@@ -200,10 +246,10 @@ export default function Header({ lang, cats }: HeaderProps) {
               </motion.div>
               <div className="hidden sm:block">
                 <div className="font-mono text-[11px] font-bold tracking-[0.2em] text-ink-0">
-                  ARCHAI
+                  {companyName.toLocaleUpperCase(ar ? "ar" : "en")}
                 </div>
                 <div className="font-mono text-[9px] tracking-[0.15em] text-ink-4">
-                  INTEGRATED SYSTEMS
+                  {companyTagline}
                 </div>
               </div>
             </Link>
@@ -239,7 +285,7 @@ export default function Header({ lang, cats }: HeaderProps) {
                         className="absolute top-full left-1/2 -translate-x-1/2 pt-3"
                         initial={{ opacity: 0, y: -8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
+                        exit={{ opacity: 0, y: -8, pointerEvents: "none" }}
                         transition={{ duration: 0.2 }}
                       >
                         <div className="w-[420px] p-3 rounded-2xl bg-[var(--bg-1)] border border-violet-500/20 shadow-[0_24px_64px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
@@ -248,6 +294,11 @@ export default function Header({ lang, cats }: HeaderProps) {
                               <Link
                                 key={c.id}
                                 href={`/${lang}/categories/${c.slug}`}
+                                prefetch={false}
+                                onMouseEnter={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
+                                onTouchStart={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
+                                onFocus={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
+                                onClick={handleInternalLinkClick}
                                 className="group/cat flex items-center gap-3 p-3 rounded-xl hover:bg-violet-500/10 transition-colors"
                               >
                                 <span className="w-9 h-9 grid place-items-center rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-300 group-hover/cat:bg-grad-primary group-hover/cat:text-white transition-all">
@@ -266,12 +317,21 @@ export default function Header({ lang, cats }: HeaderProps) {
                 </div>
               )}
 
-              <NavLink href={`/${lang}/services`} label={T("services")} />
-              <NavLink href={`/${lang}/industries`} label={T("industries")} />
-              <NavLink href={`/${lang}#list`} label={T("projects")} />
+              {primaryLinks.map((item) => {
+                const href = `/${lang}/${item.href}`;
+                return (
+                  <StableNavLink
+                    key={item.href}
+                    href={href}
+                    label={labelOf(item)}
+                    active={isActive(href)}
+                    onIntent={(target) => router.prefetch(target)}
+                  />
+                );
+              })}
 
               {/* Company dropdown */}
-              <div
+              {dropdownLinks.length > 0 && <div
                 className="relative"
                 onMouseEnter={() => setCompanyOpen(true)}
                 onMouseLeave={() => setCompanyOpen(false)}
@@ -298,17 +358,22 @@ export default function Header({ lang, cats }: HeaderProps) {
                       className="absolute top-full right-0 pt-3"
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
+                      exit={{ opacity: 0, y: -8, pointerEvents: "none" }}
                       transition={{ duration: 0.2 }}
                     >
                       <div className="w-[300px] p-2 rounded-2xl bg-[var(--bg-1)] border border-violet-500/20 shadow-[0_24px_64px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
                         <div className="grid grid-cols-2 gap-1">
-                          {COMPANY_LINKS.map((item) => {
+                          {dropdownLinks.map((item) => {
                             const Icon = item.icon;
                             return (
                               <Link
                                 key={item.href}
                                 href={`/${lang}/${item.href}`}
+                                prefetch={false}
+                                onMouseEnter={() => router.prefetch(`/${lang}/${item.href}`)}
+                                onTouchStart={() => router.prefetch(`/${lang}/${item.href}`)}
+                                onFocus={() => router.prefetch(`/${lang}/${item.href}`)}
+                                onClick={handleInternalLinkClick}
                                 className="group/link flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-ink-2 hover:text-ink-0 hover:bg-violet-500/10 transition-colors"
                               >
                                 <span className="w-8 h-8 grid place-items-center rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-300 group-hover/link:bg-grad-primary group-hover/link:text-white group-hover/link:border-transparent transition-all shrink-0">
@@ -327,7 +392,7 @@ export default function Header({ lang, cats }: HeaderProps) {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
+              </div>}
             </nav>
 
             {/* Right actions */}
@@ -342,15 +407,6 @@ export default function Header({ lang, cats }: HeaderProps) {
                 <kbd className="px-1.5 py-0.5 rounded border border-violet-500/20 text-[9px]">
                   ⌘K
                 </kbd>
-              </button>
-
-              {/* Notifications (visual) */}
-              <button
-                aria-label="Notifications"
-                className="relative hidden md:grid w-9 h-9 place-items-center rounded-lg border border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10 text-ink-2 hover:text-ink-0 transition-colors"
-              >
-                <Bell size={15} />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-mint-400 shadow-glow-mint-sm" />
               </button>
 
               {/* Language (instant switch — no reload) */}
@@ -469,6 +525,11 @@ export default function Header({ lang, cats }: HeaderProps) {
                       <Link
                         key={c.id}
                         href={`/${lang}/categories/${c.slug}`}
+                        prefetch={false}
+                        onMouseEnter={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
+                        onTouchStart={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
+                        onFocus={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
+                        onClick={handleInternalLinkClick}
                         className="flex items-center gap-3 px-3 py-3 rounded-xl text-ink-1 hover:bg-violet-500/10 transition-colors"
                       >
                         <span className="w-8 h-8 grid place-items-center rounded-lg bg-violet-500/10 text-violet-300">
@@ -481,12 +542,17 @@ export default function Header({ lang, cats }: HeaderProps) {
                   </>
                 )}
 
-                {COMPANY_LINKS.map((item) => {
+                {companyLinks.map((item) => {
                   const Icon = item.icon;
                   return (
                     <Link
                       key={item.href}
                       href={`/${lang}/${item.href}`}
+                      prefetch={false}
+                      onMouseEnter={() => router.prefetch(`/${lang}/${item.href}`)}
+                      onTouchStart={() => router.prefetch(`/${lang}/${item.href}`)}
+                      onFocus={() => router.prefetch(`/${lang}/${item.href}`)}
+                      onClick={handleInternalLinkClick}
                       className="group flex items-center gap-3 px-3 py-3 rounded-xl text-ink-1 hover:bg-violet-500/10 hover:text-ink-0 transition-colors"
                     >
                       <span className="w-8 h-8 grid place-items-center rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-300 group-hover:bg-grad-primary group-hover:text-white group-hover:border-transparent transition-all shrink-0">
@@ -501,7 +567,7 @@ export default function Header({ lang, cats }: HeaderProps) {
                 {/* Mobile CTA */}
                 <Link
                   href={`/${lang}/contact`}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={handleInternalLinkClick}
                   className="mt-4 flex items-center justify-center gap-2 h-12 rounded-xl bg-grad-cta text-white text-sm font-semibold shadow-glow-violet"
                 >
                   {ar ? "ابدأ مشروعك" : "Start a project"}

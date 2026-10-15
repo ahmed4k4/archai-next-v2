@@ -145,7 +145,7 @@ function Spinner({ children }: { children: React.ReactNode }) {
 
 export default function IndustryRings({ className }: { className?: string }) {
   return (
-    <Scene3D className={className} camera={{ position: [0, 0, 8.2], fov: 45 }}>
+    <Scene3D fallbackKind="rings" className={className} camera={{ position: [0, 0, 8.2], fov: 45 }}>
       <Float speed={1} rotationIntensity={0.15} floatIntensity={0.5}>
         <Spinner>
           <AuroraCore />

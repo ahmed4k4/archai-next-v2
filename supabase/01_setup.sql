@@ -84,11 +84,15 @@ create unique index if not exists uq_project_ind on public.project_industries(pr
 create table if not exists public.site_settings (
   id int primary key default 1 check (id = 1),
   company_name text, logo_url text, site_title text,
+  brand_tagline_en text, brand_tagline_ar text,
+  navigation jsonb not null default '[]'::jsonb,
   home_title_en text, home_title_ar text,
   home_desc_en text, home_desc_ar text,
   contact jsonb not null default '{}'::jsonb,
   social jsonb not null default '{}'::jsonb,
   footer_text_en text, footer_text_ar text,
+  footer_headline_en text, footer_headline_ar text,
+  footer_accent_en text, footer_accent_ar text,
   default_seo_image text,
   section_visibility jsonb not null default '{"hero":true,"featured":true,"categories":true}'::jsonb,
   featured_limit int not null default 6,
@@ -158,6 +162,9 @@ alter table public.project_images add column if not exists is_cover boolean not 
 alter table public.project_images add column if not exists is_featured boolean not null default false;
 alter table public.project_images add column if not exists is_hero boolean not null default false;
 alter table public.site_settings add column if not exists logo_url text;
+alter table public.site_settings add column if not exists brand_tagline_en text;
+alter table public.site_settings add column if not exists brand_tagline_ar text;
+alter table public.site_settings add column if not exists navigation jsonb not null default '[]'::jsonb;
 alter table public.site_settings add column if not exists site_title text;
 alter table public.site_settings add column if not exists home_title_en text;
 alter table public.site_settings add column if not exists home_title_ar text;
@@ -167,6 +174,10 @@ alter table public.site_settings add column if not exists contact jsonb not null
 alter table public.site_settings add column if not exists social jsonb not null default '{}'::jsonb;
 alter table public.site_settings add column if not exists footer_text_en text;
 alter table public.site_settings add column if not exists footer_text_ar text;
+alter table public.site_settings add column if not exists footer_headline_en text;
+alter table public.site_settings add column if not exists footer_headline_ar text;
+alter table public.site_settings add column if not exists footer_accent_en text;
+alter table public.site_settings add column if not exists footer_accent_ar text;
 alter table public.site_settings add column if not exists default_seo_image text;
 alter table public.site_settings add column if not exists section_visibility jsonb not null default '{"hero":true,"featured":true,"categories":true}'::jsonb;
 alter table public.site_settings add column if not exists featured_limit integer not null default 6;
@@ -175,6 +186,7 @@ alter table public.site_settings add column if not exists updated_at timestamptz
 
 
 -- ---------- indexes (kept minimal: fewer indexes = cheaper writes) ----------
+create index if not exists idx_visitor_sessions_last_seen_at on public.visitor_sessions(last_seen_at);
 create index if not exists idx_projects_category_id on public.projects(category_id);
 create index if not exists idx_projects_status_sort on public.projects(status, sort_order);
 create index if not exists idx_projects_featured_sort on public.projects(featured, featured_sort_order) where featured;
@@ -437,11 +449,12 @@ drop policy if exists media_admin_delete on storage.objects;
 create policy media_admin_delete on storage.objects for delete to authenticated using (bucket_id = 'project-media' and public.is_admin());
 
 -- ---------- initial data (structure only, no projects) ----------
-insert into public.site_settings (id, company_name, site_title, home_title_en, home_title_ar, home_desc_en, home_desc_ar)
-values (1, 'Archai Integrated Systems', 'Archai — Projects',
-  'Explore Our Digital Projects', 'اكتشف مشاريعنا الرقمية',
-  'Software, embedded and mobile solutions engineered by Archai.',
-  'حلول برمجية ومدمجة وموبايل من هندسة أرشاي.')
+insert into public.site_settings (id, company_name, site_title, home_title_en, home_title_ar, home_desc_en, home_desc_ar, brand_tagline_en, brand_tagline_ar, footer_headline_en, footer_headline_ar, footer_accent_en, footer_accent_ar)
+values (1, 'Archai Integrated Systems', 'Digital Product Engineering',
+  'Digital products built around real needs', 'منتجات رقمية تُبنى حول احتياج حقيقي',
+  'Archai designs and engineers digital products, business platforms, AI workflows, and connected systems around real operational needs.',
+  'تصمم أركاي وتطوّر المنتجات الرقمية ومنصات الأعمال وتدفقات الذكاء الاصطناعي والأنظمة المتصلة وفق احتياجات تشغيلية حقيقية.',
+  'INTEGRATED SYSTEMS', 'أنظمة متكاملة', 'We design and build what', 'نصمم ونبني ما', 'the world relies on.', 'يستخدمه العالم.')
 on conflict (id) do nothing;
 
 insert into public.categories (slug, name_en, name_ar, sort_order) values

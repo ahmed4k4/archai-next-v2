@@ -186,6 +186,7 @@ export default function TeamOrbit({ className }: { className?: string }) {
 
   return (
     <Scene3D
+      fallbackKind="team"
       className={className}
       camera={{ position: [0, 2.2, 7.5], fov: 46 }}
     >

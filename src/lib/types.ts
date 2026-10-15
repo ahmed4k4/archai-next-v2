@@ -49,8 +49,6 @@ export interface Project {
   hero_image?: string | null;
   featured?: boolean;
   status?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
   categories?: Category | null;
   project_technologies: Technology[];
   project_industries: Industry[];
@@ -58,6 +56,11 @@ export interface Project {
 }
 
 export interface SiteSettings {
+  company_name?: string | null;
+  logo_url?: string | null;
+  brand_tagline_en?: string | null;
+  brand_tagline_ar?: string | null;
+  navigation?: Array<{ href: string; labelAr?: string; labelEn?: string; enabled?: boolean }>;
   site_title?: string;
   home_title_ar?: string;
   home_title_en?: string;

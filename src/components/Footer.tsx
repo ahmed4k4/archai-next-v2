@@ -2,23 +2,88 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { pick, tr } from "@/lib/i18n";
-import type { Locale } from "@/lib/types";
-import { Reveal } from "./motion";
-import { fadeUp, staggerSlow, viewportOnce } from "@/lib/motion";
+import type { Locale, SiteSettings } from "@/lib/types";
+import { viewportOnce } from "@/lib/motion";
+import { resolveSiteNavigation } from "@/lib/site-navigation";
 
-type FooterProps = { lang: Locale; cats: any[] };
+type FooterProps = { lang: Locale; cats: any[]; settings?: SiteSettings };
 
-export default function Footer({ lang, cats }: FooterProps) {
+type SocialLink = { label: string; href: string };
+
+function safeWebUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function getSocialLinks(settings?: SiteSettings): SocialLink[] {
+  const root = (settings ?? {}) as Record<string, unknown>;
+  const social = root.social && typeof root.social === "object" && !Array.isArray(root.social)
+    ? root.social as Record<string, unknown>
+    : {};
+  const candidates: { label: string; keys: string[] }[] = [
+    { label: "in", keys: ["linkedin", "linkedin_url", "linkedIn"] },
+    { label: "X", keys: ["x", "twitter", "twitter_url"] },
+    { label: "GH", keys: ["github", "github_url"] },
+  ];
+  const links = candidates.flatMap(({ label, keys }) => {
+    const value = keys.map((key) => social[key] ?? root[key]).find((item) => typeof item === "string");
+    const href = safeWebUrl(value);
+    return href ? [{ label, href }] : [];
+  });
+  return links.filter((link, index) => links.findIndex((item) => item.href === link.href) === index);
+}
+
+function getContactRecord(settings?: SiteSettings): Record<string, unknown> {
+  const root = (settings ?? {}) as Record<string, unknown>;
+  const nested = root.contact;
+  return nested && typeof nested === "object" && !Array.isArray(nested)
+    ? nested as Record<string, unknown>
+    : {};
+}
+
+function getContactEmail(settings?: SiteSettings): string | null {
+  const root = (settings ?? {}) as Record<string, unknown>;
+  const contact = getContactRecord(settings);
+  const value = [contact.email, contact.email_address, root.contact_email, root.company_email, root.email_address, root.email]
+    .find((item) => typeof item === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.trim()));
+  return typeof value === "string" ? value.trim() : null;
+}
+
+function safeLogoUrl(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "/assets/logo.png";
+  const text = value.trim();
+  if (text.startsWith("/") && !text.startsWith("//")) return text;
+  return safeWebUrl(text) || "/assets/logo.png";
+}
+
+export default function Footer({ lang, cats, settings }: FooterProps) {
   const T = tr(lang);
   const ar = lang === "ar";
+  const socialLinks = getSocialLinks(settings);
+  const contactEmail = getContactEmail(settings);
+  const contact = getContactRecord(settings);
+  const contactPhone = typeof contact.phone === "string" ? contact.phone.trim() : "";
+  const phoneHref = contactPhone.replace(/[^+0-9]/g, "");
+  const contactWhatsapp = safeWebUrl(contact.whatsapp ?? contact.whatsapp_url);
+  const settingRoot = (settings ?? {}) as Record<string, unknown>;
+  const footerDescription = pick(settingRoot as Record<string, any>, "footer_text", lang) || T("footerAbout");
+  const footerHeadline = pick(settingRoot as Record<string, any>, "footer_headline", lang) || (ar ? "نصمم ونبني ما" : "We design and build what");
+  const footerAccent = pick(settingRoot as Record<string, any>, "footer_accent", lang) || (ar ? "يستخدمه العالم." : "the world relies on.");
+  const companyName = typeof settings?.company_name === "string" && settings.company_name.trim() ? settings.company_name.trim() : "ARCHAI";
+  const taglineValue = (settings as Record<string, unknown> | undefined)?.[ar ? "brand_tagline_ar" : "brand_tagline_en"];
+  const companyTagline = typeof taglineValue === "string" && taglineValue.trim() ? taglineValue.trim() : "INTEGRATED SYSTEMS";
+  const nav = resolveSiteNavigation((settings as Record<string, unknown> | undefined)?.navigation);
+  const logoUrl = safeLogoUrl(settings?.logo_url);
 
   return (
     <footer className="relative overflow-hidden mt-20">
       {/* Top border glow */}
       <div className="h-px bg-grad-signal opacity-60" />
-
-      {/* Background nebula */}
-      <div className="absolute inset-0 nebula opacity-25 pointer-events-none" aria-hidden />
 
       <div className="wrap relative z-10 py-16 lg:py-20">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-16">
@@ -32,12 +97,12 @@ export default function Footer({ lang, cats }: FooterProps) {
               transition={{ duration: 0.6 }}
             >
               <div className="w-10 h-10 rounded-xl overflow-hidden">
-                <img src="/assets/logo.png" alt="Archai" className="w-full h-full object-contain" />
+                <img src={logoUrl} alt={companyName} className="w-full h-full object-contain" />
               </div>
               <div>
-                <div className="font-mono text-xs font-bold tracking-[0.2em] text-ink-0">ARCHAI</div>
+                <div className="font-mono text-xs font-bold tracking-[0.2em] text-ink-0">{companyName.toLocaleUpperCase(lang === "ar" ? "ar" : "en")}</div>
                 <div className="font-mono text-[9px] tracking-[0.15em] text-ink-4">
-                  INTEGRATED SYSTEMS
+                  {companyTagline}
                 </div>
               </div>
             </motion.div>
@@ -49,10 +114,10 @@ export default function Footer({ lang, cats }: FooterProps) {
               viewport={viewportOnce}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              {ar ? "نصمم ونبني ما" : "We design and build what"}
+              {footerHeadline}
               <br />
               <span className="bg-grad-text-light dark:bg-grad-text bg-clip-text text-transparent">
-                {ar ? "يستخدمه العالم." : "the world relies on."}
+                {footerAccent}
               </span>
             </motion.h3>
 
@@ -63,27 +128,31 @@ export default function Footer({ lang, cats }: FooterProps) {
               viewport={viewportOnce}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              {T("footerAbout")}
+              {footerDescription}
             </motion.p>
 
-            {/* Social mini strip */}
-            <div className="flex gap-2 mt-6">
-              {["in", "X", "GH"].map((s, i) => (
-                <motion.a
-                  key={s}
-                  href="#"
-                  aria-label={s}
-                  className="w-9 h-9 grid place-items-center rounded-lg border border-violet-500/20 bg-violet-500/5 text-ink-3 hover:text-violet-300 hover:border-violet-500/40 transition-colors font-mono text-xs"
-                  whileHover={{ y: -3 }}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={viewportOnce}
-                  transition={{ delay: 0.3 + i * 0.05 }}
-                >
-                  {s}
-                </motion.a>
-              ))}
-            </div>
+            {/* Only show social profiles that are configured with valid http(s) URLs. */}
+            {socialLinks.length > 0 && (
+              <div className="flex gap-2 mt-6">
+                {socialLinks.map(({ label, href }, i) => (
+                  <motion.a
+                    key={href}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={label === "in" ? "LinkedIn" : label === "X" ? "X" : "GitHub"}
+                    className="w-9 h-9 grid place-items-center rounded-lg border border-violet-500/20 bg-violet-500/5 text-ink-3 hover:text-violet-300 hover:border-violet-500/40 transition-colors font-mono text-xs"
+                    whileHover={{ y: -3 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={viewportOnce}
+                    transition={{ delay: 0.3 + i * 0.05 }}
+                  >
+                    {label}
+                  </motion.a>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Site links */}
@@ -94,16 +163,10 @@ export default function Footer({ lang, cats }: FooterProps) {
             <ul className="space-y-2.5">
               {[
                 { href: `/${lang}`, label: T("home") },
-                { href: `/${lang}#list`, label: T("projects") },
-                { href: `/${lang}/services`, label: T("services") },
-                { href: `/${lang}/industries`, label: T("industries") },
-                { href: `/${lang}/about`, label: T("about") },
-                { href: `/${lang}/process`, label: T("process") },
-                { href: `/${lang}/insights`, label: T("insights") },
-                { href: `/${lang}/case-studies`, label: lang === "ar" ? "دراسات الحالة" : "Case studies" },
-                { href: `/${lang}/careers`, label: lang === "ar" ? "الوظائف" : "Careers" },
-                { href: `/${lang}/faq`, label: lang === "ar" ? "الأسئلة الشائعة" : "FAQ" },
-                { href: `/${lang}/contact`, label: T("contact") },
+                ...nav.map((item) => ({
+                  href: `/${lang}/${item.href}`,
+                  label: lang === "ar" ? item.labelAr : item.labelEn,
+                })),
               ].map((item, i) => (
                 <motion.li
                   key={item.href}
@@ -150,12 +213,23 @@ export default function Footer({ lang, cats }: FooterProps) {
             <div className="font-mono text-[10px] uppercase tracking-widest text-violet-300 mb-4">
               {T("footerContact")}
             </div>
-            <a
-              href="mailto:info@archai.com"
-              className="text-sm text-ink-3 hover:text-ink-0 transition-colors"
-            >
-              info@archai.com
-            </a>
+            {contactEmail ? (
+              <a href={`mailto:${contactEmail}`} className="text-sm text-ink-3 hover:text-ink-0 transition-colors break-all">
+                {contactEmail}
+              </a>
+            ) : (
+              <Link href={`/${lang}/contact`} className="text-sm text-ink-3 hover:text-ink-0 transition-colors">
+                {ar ? "نموذج التواصل" : "Contact form"}
+              </Link>
+            )}
+            {contactPhone && phoneHref ? (
+              <a href={`tel:${phoneHref}`} className="mt-2 block text-sm text-ink-3 transition-colors hover:text-ink-0" dir="ltr">{contactPhone}</a>
+            ) : null}
+            {contactWhatsapp ? (
+              <a href={contactWhatsapp} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex text-sm text-mint-300 transition-colors hover:text-mint-200">
+                {ar ? "تواصل عبر واتساب ↗" : "Message on WhatsApp ↗"}
+              </a>
+            ) : null}
           </div>
         </div>
 

@@ -105,6 +105,7 @@ function IncomingSignals() {
 export default function SignalBeacon({ className }: { className?: string }) {
   return (
     <Scene3D
+      fallbackKind="beacon"
       className={className}
       camera={{ position: [0, 3.4, 6], fov: 48 }}
       intensity={1.05}
