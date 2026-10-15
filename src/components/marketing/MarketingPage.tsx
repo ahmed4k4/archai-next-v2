@@ -68,6 +68,7 @@ export default function MarketingPage({
   sections,
 }: MarketingPageProps) {
   const ar = lang === "ar";
+  const isProjectsArchiveHref = (value?: string) => Boolean(value && (/(?:^|\/)projects\/?$/.test(value) || /\/(?:ar|en)\/projects\/?$/.test(value)));
   const pageKey = (kind in { home: 1, services: 1, industries: 1, about: 1, process: 1, insights: 1, contact: 1, "case-studies": 1, careers: 1, faq: 1 } ? kind : "services") as PageKey;
   const cmsSections = sections && typeof sections === "object" ? sections : {};
   const validVisuals = new Set<VisualName>(["HeroCore", "ServiceConstellation", "IndustryRings", "DNAHelix", "WorkflowGraph", "KnowledgeFragments", "SignalBeacon", "SuccessMetrics", "TeamOrbit", "QABubbles", "ProjectOrbit"]);
@@ -158,7 +159,7 @@ export default function MarketingPage({
                 <span className="text-xl">↗</span>
               </MagneticButton>
               {secondary && secondaryHref && (
-                <Link href={secondaryHref} className="btn-ghost">
+                <Link href={secondaryHref} prefetch={isProjectsArchiveHref(secondaryHref) ? true : undefined} className="btn-ghost">
                   {secondary}
                   <span className="text-lg">↗</span>
                 </Link>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Explorer from "@/components/Explorer";
 import LazyVisual from "@/components/visuals/LazyVisual";
-import { getHome } from "@/lib/data";
+import { getProjectArchive } from "@/lib/data";
 import { isLocale, pick } from "@/lib/i18n";
 import { pageSeo } from "@/lib/seo";
 import { breadcrumbSchema, collectionPageSchema, jsonLd } from "@/lib/structured-data";
@@ -58,7 +58,11 @@ export default async function CaseStudiesPage({ params }: { params: { lang: stri
   const lang = params.lang as Locale;
   const ar = lang === "ar";
   const c = await getEditablePageCopy(lang, "case-studies", copy[lang]);
-  const home = await getHome();
+  const home = await getProjectArchive();
+  const primaryLabel = typeof c.primary === "string" && c.primary.trim() ? c.primary : c.list;
+  const primaryHref = typeof c.primaryHref === "string" && c.primaryHref.trim() ? c.primaryHref : `/${lang}/projects`;
+  const secondaryLabel = typeof c.secondary === "string" && c.secondary.trim() ? c.secondary : c.contact;
+  const secondaryHref = typeof c.secondaryHref === "string" && c.secondaryHref.trim() ? c.secondaryHref : `/${lang}/contact`;
   const featured = home.projects.filter((project) => project.featured && (project.title_ar || project.title_en));
   const projects = featured.length ? featured : [];
   const url = `${SITE_URL}/${lang}/case-studies`;
@@ -87,8 +91,16 @@ export default async function CaseStudiesPage({ params }: { params: { lang: stri
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-ink-3 md:text-lg">{c.description}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href={`/${lang}/projects`} className="btn-primary">{c.list} ↗</Link>
-              <Link href={`/${lang}/contact`} className="btn-ghost">{c.contact} ↗</Link>
+              {/^https?:\/\//i.test(primaryHref) ? (
+                <a href={primaryHref} className="btn-primary" rel="noopener noreferrer">{primaryLabel} ↗</a>
+              ) : (
+                <Link href={primaryHref} prefetch={primaryHref.replace(/\/$/, "").endsWith("/projects") ? true : undefined} className="btn-primary">{primaryLabel} ↗</Link>
+              )}
+              {/^https?:\/\//i.test(secondaryHref) ? (
+                <a href={secondaryHref} className="btn-ghost" rel="noopener noreferrer">{secondaryLabel} ↗</a>
+              ) : (
+                <Link href={secondaryHref} prefetch={secondaryHref.replace(/\/$/, "").endsWith("/projects") ? true : undefined} className="btn-ghost">{secondaryLabel} ↗</Link>
+              )}
             </div>
           </div>
           <div className="relative mx-auto aspect-square w-full max-w-[470px]" aria-hidden="true">

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "../../../lib/supabase-browser";
 import { useAdminI18n } from "../../../components/admin/AdminI18n";
@@ -57,6 +57,7 @@ export default function ProjectsAdmin() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [loading, setLoading] = useState(true);
+  const handledEditQuery = useRef<string | null>(null);
   async function load() {
     setLoading(true);
     const [{ data: p, error: pe }, { data: c, error: ce }] = await Promise.all([
@@ -123,6 +124,21 @@ export default function ProjectsAdmin() {
     setShow(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+  useEffect(() => {
+    const requestedId = qs.get("edit");
+    if (!requestedId || loading || handledEditQuery.current === requestedId) return;
+    const requestedProject = items.find((project) => project.id === requestedId || project.slug === requestedId);
+    if (!requestedProject) return;
+    handledEditQuery.current = requestedId;
+    setEditing(requestedProject.id);
+    setForm({
+      ...requestedProject,
+      technologies: (requestedProject.project_technologies || []).map((item) => item.technology).join(", "),
+      industries: (requestedProject.project_industries || []).map((item) => item.industry).join(", "),
+    });
+    setShow(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [qs, loading, items]);
   function fresh() {
     setEditing(null);
     setForm({ ...blank });

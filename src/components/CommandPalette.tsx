@@ -133,6 +133,7 @@ export default function CommandPalette({
                       <button
                         key={c.id}
                         onClick={() => {
+                          window.dispatchEvent(new CustomEvent("archai:navigation-intent", { detail: { href: c.href } }));
                           router.push(c.href);
                           onClose();
                         }}

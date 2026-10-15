@@ -57,12 +57,13 @@ export default async function Page({ params }: { params: { lang: string } }) {
       title={c.title}
       accent={c.accent}
       description={c.description}
-      primary={lang === "ar" ? "تواصل معنا" : "Talk to our team"}
-      primaryHref={`/${lang}/contact`}
-      secondary={lang === "ar" ? "استكشف الخدمات" : "Explore services"}
-      secondaryHref={`/${lang}/services`}
+      primary={c.primary || (lang === "ar" ? "تواصل معنا" : "Talk to our team")}
+      primaryHref={c.primaryHref || `/${lang}/contact`}
+      secondary={c.secondary || (lang === "ar" ? "استكشف الخدمات" : "Explore services")}
+      secondaryHref={c.secondaryHref || `/${lang}/services`}
       cards={c.cards}
       outroTitle={c.outroTitle}
+      sections={c.sections as Record<string, unknown> | null}
       outroText={c.outroText}
       accentColor="mint"
     />

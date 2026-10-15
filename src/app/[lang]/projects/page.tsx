@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Explorer from "@/components/Explorer";
 import LazyVisual from "@/components/visuals/LazyVisual";
-import { getHome } from "@/lib/data";
+import { getProjectArchive } from "@/lib/data";
 import { isLocale, pick } from "@/lib/i18n";
 import { jsonLd, collectionPageSchema, breadcrumbSchema } from "@/lib/structured-data";
 import { pageSeo } from "@/lib/seo";
@@ -20,6 +20,7 @@ const copy = {
     accent: "مصممة لهدف واضح",
     description: "استكشف المشروعات المنشورة من لوحة إدارة أركاي. كل عنوان وصورة وتقنية وتصنيف ورابط في هذا الأرشيف يأتي من قاعدة البيانات، ولا نعرض سجلات مشروعات تجريبية ثابتة داخل الموقع.",
     catalogue: "استكشف الأرشيف",
+    catalogueEyebrow: "أركاي / الأعمال",
     catalogueDescription: "ابحث بالاسم، أو صفِّ النتائج حسب المجال والتقنيات المسجلة للمشروع.",
     services: "استكشف الخدمات",
     contact: "ناقش مشروعًا جديدًا",
@@ -38,6 +39,7 @@ const copy = {
     accent: "built around a clear purpose",
     description: "Explore projects published through the Archai admin dashboard. Every project title, image, technology, category and external link in this archive comes from the database; the website does not ship static demo project records.",
     catalogue: "Explore the archive",
+    catalogueEyebrow: "ARCHAI / WORK",
     catalogueDescription: "Search by name, or narrow results by the category and technologies saved with each project.",
     services: "Explore services",
     contact: "Discuss a new project",
@@ -68,8 +70,14 @@ export default async function ProjectsPage({ params }: { params: { lang: string 
   const ar = lang === "ar";
   const [c, home] = await Promise.all([
     getEditablePageCopy(lang, "projects", copy[lang]),
-    getHome(),
+    getProjectArchive(),
   ]);
+  // CTA copy, links, and the archive's helper states are CMS-managed. The `sections`
+  // editor can override the named strings in the copy object without changing layout code.
+  const primaryLabel = typeof c.primary === "string" && c.primary.trim() ? c.primary : c.catalogue;
+  const primaryHref = typeof c.primaryHref === "string" && c.primaryHref.trim() ? c.primaryHref : "#project-catalogue";
+  const secondaryLabel = typeof c.secondary === "string" && c.secondary.trim() ? c.secondary : c.contact;
+  const secondaryHref = typeof c.secondaryHref === "string" && c.secondaryHref.trim() ? c.secondaryHref : `/${lang}/contact`;
 
   // Keep the public archive strictly DB-driven. Joined categories may fill category-list
   // gaps only when they are attached to an actual published DB project record.
@@ -118,8 +126,12 @@ export default async function ProjectsPage({ params }: { params: { lang: string 
             </h1>
             <p className="mt-7 max-w-2xl text-base leading-8 text-ink-3 md:text-lg">{c.description}</p>
             <div className="mt-9 flex flex-wrap gap-3">
-              <a href="#project-catalogue" className="btn-primary">{c.catalogue} <span aria-hidden="true">↓</span></a>
-              <Link href={`/${lang}/contact`} className="btn-ghost">{c.contact} <span aria-hidden="true">↗</span></Link>
+              {primaryHref.startsWith("#") ? (
+                <a href={primaryHref} className="btn-primary">{primaryLabel} <span aria-hidden="true">↓</span></a>
+              ) : (
+                <Link href={primaryHref} className="btn-primary">{primaryLabel} <span aria-hidden="true">↗</span></Link>
+              )}
+              <Link href={secondaryHref} className="btn-ghost">{secondaryLabel} <span aria-hidden="true">↗</span></Link>
             </div>
             {projects.length > 0 && (
               <div className="mt-10 flex flex-wrap gap-x-8 gap-y-3 border-t border-white/10 pt-6 text-sm text-ink-3">

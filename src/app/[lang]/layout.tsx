@@ -8,7 +8,7 @@ import SmoothMotion from "@/components/motion/SmoothMotion";
 import GalaxyBackground from "@/components/visuals/GalaxyBackground";
 import RouteTransition from "@/components/motion/RouteTransition";
 import LocaleSync from "@/components/LocaleSync";
-import { getHome } from "@/lib/data";
+import { getSiteSettings, getSiteShell } from "@/lib/data";
 import { LOCALES, isLocale, pick } from "@/lib/i18n";
 import type { Locale } from "@/lib/types";
 import { SITE_URL } from "@/lib/supabase";
@@ -30,7 +30,7 @@ export async function generateMetadata({
   params: { lang: string };
 }) {
   const { lang } = params;
-  const { settings } = await getHome();
+  const settings = await getSiteSettings();
 
   const configuredTitle = typeof settings.site_title === "string" ? settings.site_title.trim() : "";
   const title = configuredTitle ||
@@ -92,11 +92,7 @@ export async function generateMetadata({
     creator: brand,
     publisher: brand,
     icons: {
-      icon: [
-        { url: "/icon.svg", type: "image/svg+xml" },
-        { url: "/favicon.ico", sizes: "any" },
-      ],
-      apple: "/apple-icon.png",
+      icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     },
     alternates: {
       canonical,
@@ -155,10 +151,7 @@ export default async function RootLayout({
 }) {
   const { lang } = params;
   if (!isLocale(lang)) notFound();
-  const { cats, projects, settings } = await getHome();
-  const withProjects = cats.filter((c) =>
-    projects.some((p) => String(p.category_id ?? "") === String(c.id))
-  );
+  const { cats: withProjects, settings } = await getSiteShell();
 
   return (
     <>

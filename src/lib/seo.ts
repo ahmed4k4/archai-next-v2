@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "./supabase";
 import type { Locale } from "./types";
-import { getHome } from "./data";
+import { getSiteSettings } from "./data";
 
 type SeoOptions = {
   title?: string;
@@ -22,7 +22,7 @@ export async function pageSeo(
   description: string,
   options: SeoOptions = {}
 ): Promise<Metadata> {
-  const { settings } = await getHome();
+  const settings = await getSiteSettings();
   const settingsRoot = (settings || {}) as Record<string, unknown>;
   const configuredCompany = typeof settingsRoot.company_name === "string" ? settingsRoot.company_name.trim() : "";
   const brand = configuredCompany || (lang === "ar" ? "أركاي للحلول البرمجية" : "Archai Solutions");

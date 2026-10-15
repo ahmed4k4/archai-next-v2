@@ -45,7 +45,11 @@ function normalizeNavigation(value: unknown): NavigationDraft[] {
   const normalized = input.flatMap((entry): NavigationDraft[] => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
     const row = entry as Record<string, unknown>;
-    const href = textValue(row.href).replace(/^\/+|\/+$/g, "");
+    const href = textValue(row.href)
+      .replace(/^\/(?:ar|en)(?=\/)/i, "")
+      .replace(/^\/+|\/+$/g, "")
+      .split(/[?#]/, 1)[0]
+      .toLowerCase();
     if (!allowed.has(href) || seen.has(href)) return [];
     seen.add(href);
     const fallback = DEFAULT_SITE_NAVIGATION.find((item) => item.href === href)!;

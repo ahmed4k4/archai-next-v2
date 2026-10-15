@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { pick, tr, safeUrl, projectCover } from "@/lib/i18n";
 import type { Locale } from "@/lib/types";
 
@@ -9,15 +10,21 @@ type ProjectCardProps = { p: any; lang: Locale; index?: number };
 
 export default function ProjectCard({ p, lang, index = 0 }: ProjectCardProps) {
   const T = tr(lang);
+  const router = useRouter();
   const title = pick(p, "title", lang);
   const cover = projectCover(p);
   const liveUrl = safeUrl(p.live_url);
   const technologies = Array.isArray(p?.project_technologies) ? p.project_technologies : [];
   const [broken, setBroken] = useState(false);
   const href = `/${lang}/projects/${p.slug || p.id}`;
+  // Prefetch only the first row automatically; the rest prefetch on actual intent so a
+  // long portfolio does not flood mobile connections with every detail route at once.
+  const prefetchDetails = index < 3;
 
   return (
     <motion.article
+      onMouseEnter={() => router.prefetch(href)}
+      onTouchStart={() => router.prefetch(href)}
       className="group relative rounded-3xl overflow-hidden glass"
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
@@ -26,7 +33,7 @@ export default function ProjectCard({ p, lang, index = 0 }: ProjectCardProps) {
     >
       {/* Cover */}
       <Link
-        prefetch={false}
+        prefetch={prefetchDetails}
         href={href}
         className="block relative aspect-[16/10] overflow-hidden bg-violet-900/20"
         aria-label={`${T("details")} — ${title}`}
@@ -80,7 +87,7 @@ export default function ProjectCard({ p, lang, index = 0 }: ProjectCardProps) {
       {/* Body */}
       <div className="p-6">
         <h3 className="font-display text-xl font-medium text-ink-0 mb-3 leading-snug group-hover:text-violet-200 transition-colors duration-300">
-          <Link href={href} prefetch={false}>{title}</Link>
+          <Link href={href} prefetch={prefetchDetails}>{title}</Link>
         </h3>
 
         <p className="text-sm text-ink-3 leading-relaxed mb-4 line-clamp-2">
@@ -116,7 +123,7 @@ export default function ProjectCard({ p, lang, index = 0 }: ProjectCardProps) {
           )}
           <Link
             href={href}
-            prefetch={false}
+            prefetch={prefetchDetails}
             className={`${
               liveUrl ? "" : "flex-1"
             } inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-violet-500/30 bg-violet-500/5 text-ink-1 text-xs font-semibold hover:bg-violet-500/15 hover:border-violet-500/50 transition-all`}

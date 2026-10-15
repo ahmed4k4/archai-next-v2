@@ -5,7 +5,7 @@ import Explorer from "@/components/Explorer";
 import CategoryCards from "@/components/CategoryCards";
 import LazyVisual from "@/components/visuals/LazyVisual";
 import { sceneForCategory } from "@/components/visuals/PageScenes";
-import { getHome } from "@/lib/data";
+import { getProjectArchive } from "@/lib/data";
 import { LOCALES, pick, tr } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/supabase";
 import { pageSeo } from "@/lib/seo";
@@ -18,7 +18,7 @@ import {
 export const revalidate = 60;
 
 export async function generateStaticParams() {
-  const { cats } = await getHome();
+  const { cats } = await getProjectArchive();
   return LOCALES.flatMap((lang) =>
     cats.map((c) => ({ lang, slug: c.slug }))
   );
@@ -30,7 +30,7 @@ export async function generateMetadata({
   params: { lang: string; slug: string };
 }) {
   const { lang, slug } = params;
-  const { cats } = await getHome();
+  const { cats } = await getProjectArchive();
   const c = cats.find((x) => x.slug === slug);
   if (!c) return {};
   const desc = pick(c, "description", lang as any);
@@ -45,7 +45,7 @@ export default async function CategoryPage({
 }) {
   const { lang, slug } = params;
   const T = tr(lang as any);
-  const { cats, projects } = await getHome();
+  const { cats, projects } = await getProjectArchive();
   const cat = cats.find((c) => c.slug === slug);
   if (!cat) notFound();
 

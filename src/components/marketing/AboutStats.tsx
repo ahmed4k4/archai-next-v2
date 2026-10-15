@@ -35,9 +35,37 @@ const HIGHLIGHTS = [
   },
 ];
 
-export default function AboutStats({ lang }: { lang: Locale }) {
+type AboutHighlight = {
+  index?: string;
+  title?: string;
+  body?: string;
+  titleAr?: string;
+  titleEn?: string;
+  bodyAr?: string;
+  bodyEn?: string;
+};
+
+export default function AboutStats({ lang, items }: { lang: Locale; items?: unknown }) {
   const ar = lang === "ar";
   const reduce = useReducedMotion();
+  const supplied = Array.isArray(items)
+    ? (items as AboutHighlight[]).filter((item) => item && typeof item === "object" && (
+        typeof item.title === "string" || typeof item.titleAr === "string" || typeof item.titleEn === "string"
+      )).slice(0, 8)
+    : null;
+  // An explicit empty CMS array means the editor intentionally removed this section's cards.
+  if (supplied && supplied.length === 0) return null;
+  const highlights = supplied
+    ? supplied.map((item, i) => ({
+        index: typeof item.index === "string" && item.index.trim() ? item.index : String(i + 1).padStart(2, "0"),
+        title: typeof item.title === "string" ? item.title : (ar ? item.titleAr : item.titleEn) || "",
+        body: typeof item.body === "string" ? item.body : (ar ? item.bodyAr : item.bodyEn) || "",
+      }))
+    : HIGHLIGHTS.map((item) => ({
+        index: item.index,
+        title: ar ? item.titleAr : item.titleEn,
+        body: ar ? item.bodyAr : item.bodyEn,
+      }));
 
   return (
     <section className="wrap py-20" aria-labelledby="about-capabilities-title">
@@ -45,7 +73,7 @@ export default function AboutStats({ lang }: { lang: Locale }) {
         {ar ? "نطاق قدرات أركاي" : "Archai capabilities"}
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {HIGHLIGHTS.map((item, i) => (
+        {highlights.map((item, i) => (
           <motion.article
             key={item.index}
             className="relative h-full min-h-56 p-6 rounded-3xl glass overflow-hidden"
@@ -61,10 +89,10 @@ export default function AboutStats({ lang }: { lang: Locale }) {
               <span aria-hidden="true" className="w-2 h-2 rounded-full bg-mint-300 shadow-[0_0_16px_rgba(76,226,208,0.45)]" />
             </div>
             <h3 className="relative font-display text-xl leading-snug font-medium text-ink-0 mb-3">
-              {ar ? item.titleAr : item.titleEn}
+              {item.title}
             </h3>
             <p className="relative text-sm leading-relaxed text-ink-3">
-              {ar ? item.bodyAr : item.bodyEn}
+              {item.body}
             </p>
           </motion.article>
         ))}

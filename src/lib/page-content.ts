@@ -74,6 +74,17 @@ export async function getPageContent(pageKey: string, locale: Locale): Promise<S
   }
 }
 
+function safeContentHref(value: string, fallback: unknown): string {
+  const clean = value.trim();
+  if (clean.startsWith("#") && /^#[A-Za-z][A-Za-z0-9_.:-]{0,120}$/.test(clean)) return clean;
+  if (clean.startsWith("/") && !clean.startsWith("//") && !clean.includes("\\") && !/^\/(?:%2f|%5c)/i.test(clean)) return clean;
+  try {
+    const parsed = new URL(clean);
+    if (parsed.protocol === "https:" || parsed.protocol === "http:") return parsed.toString();
+  } catch {}
+  return typeof fallback === "string" ? fallback : "";
+}
+
 /** Merge translated CMS fields onto existing page structure while preserving safe defaults. */
 export async function getEditablePageCopy<T extends Record<string, any>>(
   locale: Locale,
@@ -95,13 +106,34 @@ export async function getEditablePageCopy<T extends Record<string, any>>(
     ["primaryHref", "primary_href"],
     ["secondary", "secondary_label"],
     ["secondaryHref", "secondary_href"],
+    // Keep SEO CMS fields distinct from visible heading and description copy.
+    ["seoTitle", "seo_title"],
+    ["seoDescription", "seo_description"],
   ];
   for (const [target, source] of fieldMap) {
     const value = cms[source];
-    if (typeof value === "string" && value.trim()) merged[target] = value.trim();
+    if (typeof value === "string" && value.trim()) {
+      merged[target] = target.endsWith("Href")
+        ? safeContentHref(value, fallback[target])
+        : value.trim();
+    }
   }
 
-  if (Array.isArray(cms.cards)) merged.cards = cms.cards;
+  if (Array.isArray(cms.cards)) {
+    const safeCards = cms.cards.filter((item): item is Record<string, unknown> =>
+      Boolean(item && typeof item === "object" && !Array.isArray(item)
+        && typeof (item as Record<string, unknown>).title === "string"
+        && typeof (item as Record<string, unknown>).body === "string")
+    ).slice(0, 40).map((card) => ({
+      ...card,
+      number: typeof card.number === "string" ? card.number.slice(0, 40) : "",
+      icon: typeof card.icon === "string" ? card.icon.slice(0, 24) : "◇",
+      title: String(card.title).slice(0, 240),
+      body: String(card.body).slice(0, 4000),
+      tags: Array.isArray(card.tags) ? card.tags.filter((tag): tag is string => typeof tag === "string").slice(0, 12).map((tag) => tag.slice(0, 60)) : [],
+    }));
+    if (safeCards.length || cms.cards.length === 0) merged.cards = safeCards;
+  }
   if (cms.sections && typeof cms.sections === "object" && !Array.isArray(cms.sections)) {
     const sections = cms.sections as Record<string, unknown>;
     merged.sections = sections;

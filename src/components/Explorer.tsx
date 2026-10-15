@@ -166,7 +166,7 @@ export default function Explorer({
                 >
                   <Link
                     href={`/${lang}/categories/${c.slug}`}
-                    prefetch={false}
+                    prefetch={true}
                     className="font-display text-3xl font-medium text-ink-0 hover:text-violet-300 transition-colors flex items-center gap-3"
                   >
                     {c.icon && (
@@ -178,7 +178,7 @@ export default function Explorer({
                   </Link>
                   <Link
                     href={`/${lang}/categories/${c.slug}`}
-                    prefetch={false}
+                    prefetch={true}
                     className="text-sm text-mint-300 hover:underline flex items-center gap-1"
                   >
                     {T("viewAll")} ({all.length}) ↗

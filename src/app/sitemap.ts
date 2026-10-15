@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getHome } from "@/lib/data";
+import { getProjectArchive } from "@/lib/data";
 import { LOCALES } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/supabase";
 
@@ -9,10 +9,7 @@ const STATIC_PAGES = [
   { path: "industries", priority: 0.85, changeFrequency: "monthly" as const },
   { path: "about", priority: 0.8, changeFrequency: "monthly" as const },
   { path: "process", priority: 0.75, changeFrequency: "monthly" as const },
-  { path: "technologies", priority: 0.72, changeFrequency: "monthly" as const },
   { path: "insights", priority: 0.7, changeFrequency: "weekly" as const },
-  { path: "engineering-notes", priority: 0.68, changeFrequency: "weekly" as const },
-  { path: "blog", priority: 0.66, changeFrequency: "weekly" as const },
   { path: "case-studies", priority: 0.75, changeFrequency: "monthly" as const },
   { path: "careers", priority: 0.65, changeFrequency: "monthly" as const },
   { path: "faq", priority: 0.7, changeFrequency: "monthly" as const },
@@ -20,7 +17,7 @@ const STATIC_PAGES = [
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const { cats, projects } = await getHome();
+  const { cats, projects } = await getProjectArchive();
   return LOCALES.flatMap((lang) => {
     const urls: MetadataRoute.Sitemap = [];
 
@@ -70,13 +67,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     });
 
-    /* Projects — with images */
+    /* Projects — use only lightweight cover/hero images, not full detail galleries. */
     projects.forEach((p) => {
       const images = [
         p.cover_image,
         p.featured_image,
         p.hero_image,
-        ...(p.project_images?.map((img) => img.public_url) || []),
       ].filter(Boolean) as string[];
 
       const projectPath = p.slug || p.id;

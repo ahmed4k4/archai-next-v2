@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import type { Locale } from "@/lib/types";
 import { SITE_URL } from "@/lib/supabase";
 import { jsonLd } from "@/lib/structured-data";
-import { getHome } from "@/lib/data";
+import { getSiteSettings } from "@/lib/data";
 
 export async function generateMetadata({
   params,
@@ -22,13 +22,13 @@ export async function generateMetadata({
 export default async function Page({ params }: { params: { lang: string } }) {
   if (!isLocale(params.lang)) notFound();
   const lang = params.lang as Locale;
-  const [c, home] = await Promise.all([
+  const [c, settings] = await Promise.all([
     getEditablePageCopy(lang, "contact", marketingContent(lang, "contact")),
-    getHome(),
+    getSiteSettings(),
   ]);
-  const settings = (home.settings || {}) as Record<string, unknown>;
-  const contact = settings.contact && typeof settings.contact === "object" && !Array.isArray(settings.contact)
-    ? settings.contact as Record<string, unknown>
+  const siteSettings = (settings || {}) as Record<string, unknown>;
+  const contact = siteSettings.contact && typeof siteSettings.contact === "object" && !Array.isArray(siteSettings.contact)
+    ? siteSettings.contact as Record<string, unknown>
     : {};
   const emailValue = [contact.email, contact.email_address].find((value) => typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()));
   const email = typeof emailValue === "string" ? emailValue.trim() : "";
@@ -84,10 +84,10 @@ export default async function Page({ params }: { params: { lang: string } }) {
         title={c.title}
         accent={c.accent}
         description={c.description}
-        primary={lang === "ar" ? "ابدأ مشروعك" : "Start your project"}
-        primaryHref={`/${lang}/contact`}
-        secondary={lang === "ar" ? "استكشف المشاريع" : "Explore projects"}
-        secondaryHref={`/${lang}/projects`}
+        primary={c.primary || (lang === "ar" ? "ابدأ مشروعك" : "Start your project")}
+        primaryHref={c.primaryHref || `/${lang}/contact`}
+        secondary={c.secondary || (lang === "ar" ? "استكشف المشاريع" : "Explore projects")}
+        secondaryHref={c.secondaryHref || `/${lang}/projects`}
         cards={c.cards}
         outroTitle={c.outroTitle}
         outroText={c.outroText}

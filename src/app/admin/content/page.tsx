@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Save, RefreshCw, FileText, Search, Languages, Eye, EyeOff, Code2, CircleAlert } from "lucide-react";
+import { Save, RefreshCw, FileText, Search, Languages, Code2, CircleAlert, Plus, Trash2, ChevronDown } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 
@@ -44,10 +44,91 @@ const EMPTY_FORM: ContentForm = {
   outro_title: "", outro_text: "", seo_title: "", seo_description: "", is_published: true,
 };
 
+const MARKETING_SECTION_FIELDS = [
+  { key: "cardsEyebrow", ar: "النص أعلى البطاقات", en: "Cards eyebrow" },
+  { key: "cardsTitle", ar: "عنوان قسم البطاقات", en: "Cards section title" },
+  { key: "cardsAccent", ar: "النص المميز لقسم البطاقات", en: "Cards section accent" },
+  { key: "cardsDescription", ar: "وصف قسم البطاقات", en: "Cards section description", multiline: true },
+  { key: "liveSystemsEyebrow", ar: "عنوان قسم الأنظمة", en: "Systems section eyebrow" },
+  { key: "outroEyebrow", ar: "النص أعلى الخاتمة", en: "Closing section eyebrow" },
+];
+
+type HomeOverviewField = { key: string; ar: string; en: string; multiline?: boolean };
+type HomeOverviewGroup = { key: string; ar: string; en: string; fields: HomeOverviewField[]; create: (index: number) => Record<string, string> };
+const HOME_OVERVIEW_GROUPS: HomeOverviewGroup[] = [
+  { key: "capabilities", ar: "القدرات والحلول", en: "Capabilities & solutions", fields: [
+    { key: "number", ar: "الرقم", en: "Number" }, { key: "title", ar: "العنوان", en: "Title" }, { key: "text", ar: "الوصف", en: "Description", multiline: true },
+  ], create: (i) => ({ number: String(i).padStart(2, "0"), title: "", text: "" }) },
+  { key: "audiences", ar: "العملاء والقطاعات المستهدفة", en: "Target audiences", fields: [
+    { key: "title", ar: "العنوان", en: "Title" }, { key: "text", ar: "الوصف", en: "Description", multiline: true },
+  ], create: () => ({ title: "", text: "" }) },
+  { key: "principles", ar: "مبادئ الشركة", en: "Company principles", fields: [
+    { key: "title", ar: "العنوان", en: "Title" }, { key: "text", ar: "الوصف", en: "Description", multiline: true },
+  ], create: () => ({ title: "", text: "" }) },
+  { key: "process", ar: "مراحل العمل", en: "Work process", fields: [
+    { key: "number", ar: "الرقم", en: "Number" }, { key: "title", ar: "العنوان", en: "Title" }, { key: "text", ar: "الوصف", en: "Description", multiline: true },
+  ], create: (i) => ({ number: String(i).padStart(2, "0"), title: "", text: "" }) },
+  { key: "questions", ar: "الأسئلة الشائعة بالرئيسية", en: "Homepage FAQs", fields: [
+    { key: "q", ar: "السؤال", en: "Question", multiline: true }, { key: "a", ar: "الإجابة", en: "Answer", multiline: true },
+  ], create: () => ({ q: "", a: "" }) },
+];
+
+const ABOUT_STATS_DEFAULTS: Record<"ar" | "en", Array<{ index: string; title: string; body: string }>> = {
+  ar: [
+    { index: "01", title: "6 مسارات خدمة أساسية", body: "تطوير الويب، أنظمة الأعمال، الذكاء الاصطناعي، الأنظمة المدمجة وإنترنت الأشياء، تطبيقات الموبايل، والدعم المستمر." },
+    { index: "02", title: "لغتان، تجربة واحدة", body: "تجربة عربية وإنجليزية مع مراعاة اتجاه الكتابة وتنسيق الواجهة في كل لغة." },
+    { index: "03", title: "من الواجهات إلى الأجهزة", body: "نجمع تطوير الويب والموبايل وتكامل الذكاء الاصطناعي والأنظمة المدمجة ضمن نطاق هندسي متكامل." },
+    { index: "04", title: "ما بعد الإطلاق أيضًا", body: "يشمل نطاق العمل الصيانة وتحسين الأداء والمراجعات التقنية وتطوير المنتج على مراحل." },
+  ],
+  en: [
+    { index: "01", title: "Six core service lines", body: "Web development, business systems, AI, embedded and IoT, mobile applications, and ongoing support." },
+    { index: "02", title: "Two languages, one experience", body: "Arabic and English experiences designed around the right reading direction and layout for each language." },
+    { index: "03", title: "From interfaces to devices", body: "Our technical scope spans web and mobile products, practical AI integrations, and embedded systems." },
+    { index: "04", title: "Beyond launch", body: "The service scope includes maintenance, performance improvements, technical reviews, and iterative product development." },
+  ],
+};
+
+const SECTION_TEXT_FIELDS: Record<string, Array<{ key: string; ar: string; en: string; multiline?: boolean }>> = {
+  services: MARKETING_SECTION_FIELDS,
+  industries: MARKETING_SECTION_FIELDS,
+  about: MARKETING_SECTION_FIELDS,
+  process: MARKETING_SECTION_FIELDS,
+  insights: MARKETING_SECTION_FIELDS,
+  contact: MARKETING_SECTION_FIELDS,
+  faq: MARKETING_SECTION_FIELDS,
+  careers: MARKETING_SECTION_FIELDS,
+  projects: [
+    { key: "catalogueEyebrow", ar: "النص أعلى أرشيف المشاريع", en: "Archive eyebrow" },
+    { key: "catalogue", ar: "عنوان أرشيف المشاريع", en: "Archive title" },
+    { key: "catalogueDescription", ar: "وصف أرشيف المشاريع", en: "Archive description", multiline: true },
+    { key: "services", ar: "رابط/زر الخدمات", en: "Services CTA label" },
+    { key: "contact", ar: "زر التواصل", en: "Contact CTA label" },
+    { key: "unconfiguredTitle", ar: "عنوان غياب إعداد قاعدة البيانات", en: "Database setup title" },
+    { key: "unconfiguredBody", ar: "رسالة إعداد قاعدة البيانات", en: "Database setup message", multiline: true },
+    { key: "errorTitle", ar: "عنوان خطأ البيانات", en: "Data error title" },
+    { key: "errorBody", ar: "رسالة خطأ البيانات", en: "Data error message", multiline: true },
+    { key: "compatibilityTitle", ar: "عنوان وضع التوافق", en: "Compatibility mode title" },
+    { key: "compatibilityBody", ar: "رسالة وضع التوافق", en: "Compatibility mode message", multiline: true },
+    { key: "emptyTitle", ar: "عنوان عدم وجود مشاريع", en: "Empty archive title" },
+    { key: "emptyBody", ar: "رسالة عدم وجود مشاريع", en: "Empty archive message", multiline: true },
+  ],
+  "case-studies": [
+    { key: "list", ar: "عنوان قائمة دراسات الحالة", en: "Case studies list title" },
+    { key: "listDescription", ar: "وصف قائمة دراسات الحالة", en: "Case studies list description", multiline: true },
+    { key: "emptyTitle", ar: "عنوان عدم وجود دراسات حالة", en: "Empty case studies title" },
+    { key: "emptyBody", ar: "رسالة عدم وجود دراسات حالة", en: "Empty case studies message", multiline: true },
+    { key: "unavailableTitle", ar: "عنوان تعذر تحميل المشاريع", en: "Projects unavailable title" },
+    { key: "unavailableBody", ar: "رسالة تعذر تحميل المشاريع", en: "Projects unavailable message", multiline: true },
+    { key: "services", ar: "زر الخدمات", en: "Services CTA label" },
+    { key: "contact", ar: "زر التواصل", en: "Contact CTA label" },
+  ],
+};
+
 function safePath(value: string) {
   const text = value.trim();
   if (!text) return true;
-  if (text.startsWith("/") && !text.startsWith("//")) return true;
+  if (text.startsWith("#")) return /^#[A-Za-z][A-Za-z0-9_.:-]{0,120}$/.test(text);
+  if (text.startsWith("/") && !text.startsWith("//") && !text.includes("\\") && !/^\/(?:%2f|%5c)/i.test(text)) return true;
   try {
     const parsed = new URL(text);
     return parsed.protocol === "https:" || parsed.protocol === "http:";
@@ -61,8 +142,11 @@ export default function PageContentEditor() {
   const ar = locale === "ar";
   const sb = useMemo(() => supabaseBrowser(), []);
   const router = useRouter();
-  const [pageKey, setPageKey] = useState("home");
-  const [contentLocale, setContentLocale] = useState<"ar" | "en">(locale);
+  const searchParams = useSearchParams();
+  const requestedPage = searchParams.get("page");
+  const requestedLocale = searchParams.get("locale");
+  const [pageKey, setPageKey] = useState(() => PAGE_OPTIONS.some((page) => page.key === requestedPage) ? requestedPage! : "home");
+  const [contentLocale, setContentLocale] = useState<"ar" | "en">(() => requestedLocale === "en" || requestedLocale === "ar" ? requestedLocale : locale);
   const [form, setForm] = useState<ContentForm>(EMPTY_FORM);
   const [cardsJson, setCardsJson] = useState("[]");
   const [sectionsJson, setSectionsJson] = useState("{}");
@@ -70,6 +154,70 @@ export default function PageContentEditor() {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState("");
   const [loadError, setLoadError] = useState("");
+
+  const cardRows = useMemo<Record<string, unknown>[]>(() => {
+    try {
+      const parsed: unknown = JSON.parse(cardsJson);
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item))).slice(0, 40)
+        : [];
+    } catch {
+      return [];
+    }
+  }, [cardsJson]);
+
+  const sectionObject = useMemo<Record<string, unknown>>(() => {
+    try {
+      const parsed: unknown = JSON.parse(sectionsJson);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
+    } catch {
+      return {};
+    }
+  }, [sectionsJson]);
+  const updateSection = (key: string, value: string) => setSectionsJson(JSON.stringify({ ...sectionObject, [key]: value }, null, 2));
+  const writeCards = (next: Record<string, unknown>[]) => setCardsJson(JSON.stringify(next.slice(0, 40), null, 2));
+  const updateCard = (index: number, key: string, value: unknown) => {
+    const next = [...cardRows];
+    next[index] = { ...next[index], [key]: value };
+    writeCards(next);
+  };
+  const addCard = () => writeCards([...cardRows, { number: String(cardRows.length + 1).padStart(2, "0"), icon: "◇", title: "", body: "", tags: [] }]);
+  const removeCard = (index: number) => writeCards(cardRows.filter((_, itemIndex) => itemIndex !== index));
+  const homepageOverview = sectionObject.homeOverview && typeof sectionObject.homeOverview === "object" && !Array.isArray(sectionObject.homeOverview)
+    ? sectionObject.homeOverview as Record<string, unknown>
+    : {};
+  const updateHomeOverviewItem = (groupKey: string, index: number, fieldKey: string, value: string) => {
+    const current = Array.isArray(homepageOverview[groupKey]) ? homepageOverview[groupKey] as unknown[] : [];
+    const next = current.map((item, itemIndex) => itemIndex === index && item && typeof item === "object" && !Array.isArray(item)
+      ? { ...(item as Record<string, unknown>), [fieldKey]: value }
+      : item);
+    setSectionsJson(JSON.stringify({ ...sectionObject, homeOverview: { ...homepageOverview, [groupKey]: next } }, null, 2));
+  };
+  const addHomeOverviewItem = (groupKey: string) => {
+    const group = HOME_OVERVIEW_GROUPS.find((item) => item.key === groupKey);
+    if (!group) return;
+    const current = Array.isArray(homepageOverview[groupKey]) ? homepageOverview[groupKey] as unknown[] : [];
+    if (current.length >= 20) return;
+    setSectionsJson(JSON.stringify({ ...sectionObject, homeOverview: { ...homepageOverview, [groupKey]: [...current, group.create(current.length + 1)] } }, null, 2));
+  };
+  const removeHomeOverviewItem = (groupKey: string, index: number) => {
+    const current = Array.isArray(homepageOverview[groupKey]) ? homepageOverview[groupKey] as unknown[] : [];
+    setSectionsJson(JSON.stringify({ ...sectionObject, homeOverview: { ...homepageOverview, [groupKey]: current.filter((_, itemIndex) => itemIndex !== index) } }, null, 2));
+  };
+  const aboutStats = Array.isArray(sectionObject.aboutStats)
+    ? (sectionObject.aboutStats as unknown[]).filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item))).slice(0, 8)
+    : [];
+  const updateAboutStat = (index: number, key: "index" | "title" | "body", value: string) => {
+    const next = aboutStats.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item);
+    setSectionsJson(JSON.stringify({ ...sectionObject, aboutStats: next }, null, 2));
+  };
+  const addAboutStat = () => {
+    if (aboutStats.length >= 8) return;
+    setSectionsJson(JSON.stringify({ ...sectionObject, aboutStats: [...aboutStats, { index: String(aboutStats.length + 1).padStart(2, "0"), title: "", body: "" }] }, null, 2));
+  };
+  const removeAboutStat = (index: number) => {
+    setSectionsJson(JSON.stringify({ ...sectionObject, aboutStats: aboutStats.filter((_, itemIndex) => itemIndex !== index) }, null, 2));
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,7 +247,7 @@ export default function PageContentEditor() {
       accent: row?.accent || "",
       description: localizedDescription || row?.description || "",
       primary_label: row?.primary_label || "",
-      primary_href: row?.primary_href || `/${contentLocale}/contact`,
+      primary_href: row?.primary_href || (pageKey === "projects" ? "#project-catalogue" : pageKey === "case-studies" ? `/${contentLocale}/projects` : `/${contentLocale}/contact`),
       secondary_label: row?.secondary_label || "",
       secondary_href: row?.secondary_href || "",
       outro_title: row?.outro_title || "",
@@ -109,7 +257,15 @@ export default function PageContentEditor() {
       is_published: row?.is_published !== false,
     });
     setCardsJson(JSON.stringify(Array.isArray(row?.cards) ? row.cards : [], null, 2));
-    setSectionsJson(JSON.stringify(row?.sections && typeof row.sections === "object" ? row.sections : {}, null, 2));
+    const loadedSections = row?.sections && typeof row.sections === "object" && !Array.isArray(row.sections)
+      ? { ...row.sections as Record<string, unknown> }
+      : {};
+    // Make the live About highlights editable even on databases where the optional
+    // structured override has not been saved yet; these are the exact localized fallbacks.
+    if (pageKey === "about" && !Array.isArray(loadedSections.aboutStats)) {
+      loadedSections.aboutStats = ABOUT_STATS_DEFAULTS[contentLocale];
+    }
+    setSectionsJson(JSON.stringify(loadedSections, null, 2));
     setLastSaved(row?.updated_at || "");
     setLoading(false);
   }, [ar, contentLocale, pageKey, sb]);
@@ -170,7 +326,9 @@ export default function PageContentEditor() {
         seo_description: form.seo_description.trim(),
         cards,
         sections,
-        is_published: form.is_published,
+        // Homepage availability is controlled by the site itself; do not let a copy-editor
+        // accidentally unpublish the primary entry point of the company website.
+        is_published: pageKey === "home" ? true : form.is_published,
         updated_at: new Date().toISOString(),
       };
       const { error } = await sb.from("site_page_content").upsert(payload, { onConflict: "page_key,locale" });
@@ -271,16 +429,103 @@ export default function PageContentEditor() {
               {field("seo_title", ar ? "عنوان محركات البحث" : "SEO title")}
               {field("seo_description", ar ? "وصف محركات البحث" : "SEO description", true, 3)}
             </div>
-            <div className="mt-3">{field("is_published", ar ? "حالة النشر" : "Publication status")}</div>
+            {pageKey !== "home" ? (
+              <div className="mt-3">{field("is_published", ar ? "حالة النشر" : "Publication status")}</div>
+            ) : (
+              <p className="mt-3 text-xs leading-6 text-ink-4">{ar ? "الصفحة الرئيسية تظل متاحة دائمًا. إخفاء نصوص CMS لا يعطّل الصفحة الأساسية." : "The homepage remains available. CMS copy publication does not disable the homepage route."}</p>
+            )}
           </section>
 
           <section className="admin-panel">
-            <div className="admin-section-title"><div><span className="admin-kicker">03 / STRUCTURED CONTENT</span><h3>{ar ? "البطاقات والأقسام المتقدمة" : "Cards & advanced sections"}</h3></div><span className="admin-panel-badge"><Code2 size={12} /> JSON</span></div>
-            <p className="mb-4 text-sm leading-7 text-ink-3">{ar ? "تُستخدم البطاقات للنصوص المتكررة مثل خدمات الصفحة والأسئلة الشائعة. تُستخدم الأقسام لتعديل التفاصيل المتقدمة مثل محتوى الصفحة الرئيسية، مجالات التركيز، التقنيات وإعدادات الأقسام. حافظ على صيغة JSON الصحيحة." : "Cards manage repeated items such as service cards and FAQs. Sections manage advanced content such as homepage overview, focus areas, technologies and section settings. Keep valid JSON."}</p>
-            <div className="form-grid">
-              <label className="wide"><span>{ar ? "البطاقات (مصفوفة JSON)" : "Cards (JSON array)"}<textarea rows={12} spellCheck={false} className="font-mono text-xs" value={cardsJson} onChange={(event) => setCardsJson(event.target.value)} /></span></label>
-              <label className="wide"><span>{ar ? "الأقسام المتقدمة (كائن JSON)" : "Advanced sections (JSON object)"}<textarea rows={18} spellCheck={false} className="font-mono text-xs" value={sectionsJson} onChange={(event) => setSectionsJson(event.target.value)} /></span></label>
-            </div>
+            <div className="admin-section-title"><div><span className="admin-kicker">03 / CONTENT BUILDER</span><h3>{ar ? "محرر البطاقات والأقسام" : "Cards & page sections"}</h3></div><span className="admin-panel-badge"><FileText size={12} /> {cardRows.length} {ar ? "بطاقة" : "cards"}</span></div>
+            <p className="mb-4 text-sm leading-7 text-ink-3">{ar ? "عدّل البطاقات من حقول واضحة بدل كتابة JSON. التغييرات لا تظهر للعامة إلا بعد الضغط على حفظ المحتوى. استخدم وضع المطور فقط عند تعديل مفاتيح الأقسام المتقدمة." : "Edit cards with normal fields instead of hand-writing JSON. Changes go live only after saving. Use developer mode only for advanced section keys."}</p>
+            {(SECTION_TEXT_FIELDS[pageKey]?.length ?? 0) > 0 ? (
+              <div className="form-grid mb-5 rounded-2xl border border-violet-500/15 bg-[var(--bg-1)]/35 p-4">
+                {SECTION_TEXT_FIELDS[pageKey].map((item) => (
+                  <label className={item.multiline ? "wide" : ""} key={item.key}>
+                    <span>{ar ? item.ar : item.en}</span>
+                    {item.multiline ? (
+                      <textarea rows={3} value={typeof sectionObject[item.key] === "string" ? sectionObject[item.key] as string : ""} onChange={(event) => updateSection(item.key, event.target.value)} />
+                    ) : (
+                      <input value={typeof sectionObject[item.key] === "string" ? sectionObject[item.key] as string : ""} onChange={(event) => updateSection(item.key, event.target.value)} />
+                    )}
+                  </label>
+                ))}
+              </div>
+            ) : null}
+            {pageKey === "about" ? (
+              <div className="mb-5 space-y-3 rounded-2xl border border-violet-500/15 bg-[var(--bg-1)]/35 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div><h4 className="font-semibold text-ink-1">{ar ? "نقاط القوة الرئيسية" : "Company highlights"}</h4><p className="mt-1 text-xs leading-6 text-ink-4">{ar ? "هذه البطاقات كانت ثابتة في القالب؛ أصبحت الآن قابلة للتعديل والحفظ لكل لغة." : "These highlights used to be hard-coded; they are now editable and saved per language."}</p></div>
+                  <button type="button" className="admin-tool-button" onClick={addAboutStat} disabled={aboutStats.length >= 8}><Plus size={14} />{ar ? "إضافة بطاقة" : "Add highlight"}</button>
+                </div>
+                {aboutStats.length ? aboutStats.map((item, index) => (
+                  <div key={`${String(item.index || index)}-${index}`} className="rounded-xl border border-violet-500/10 bg-[var(--bg-glass)] p-3">
+                    <div className="mb-3 flex items-center justify-between gap-3"><strong className="text-xs text-ink-4">{ar ? `بطاقة ${index + 1}` : `Highlight ${index + 1}`}</strong><button type="button" className="admin-tool-button" onClick={() => removeAboutStat(index)}><Trash2 size={13} />{ar ? "حذف" : "Remove"}</button></div>
+                    <div className="form-grid"><label><span>{ar ? "الرقم" : "Index"}<input maxLength={12} value={String(item.index ?? String(index + 1).padStart(2, "0"))} onChange={(event) => updateAboutStat(index, "index", event.target.value)} /></span></label><label className="wide"><span>{ar ? "العنوان" : "Title"}<input maxLength={180} value={String(item.title ?? "")} onChange={(event) => updateAboutStat(index, "title", event.target.value)} /></span></label><label className="wide"><span>{ar ? "الوصف" : "Description"}<textarea rows={3} maxLength={1600} value={String(item.body ?? "")} onChange={(event) => updateAboutStat(index, "body", event.target.value)} /></span></label></div>
+                  </div>
+                )) : <p className="text-xs text-ink-4">{ar ? "تم حذف كل البطاقات؛ لن يظهر قسم نقاط القوة في الموقع بعد الحفظ." : "All highlights are removed; this section will be hidden after saving."}</p>}
+              </div>
+            ) : null}
+            {pageKey === "home" ? (
+              <div className="mb-5 space-y-4">
+                <div className="rounded-2xl border border-violet-500/15 bg-[var(--bg-1)]/35 p-4">
+                  <h4 className="font-semibold text-ink-1">{ar ? "محتوى الرئيسية المنظم" : "Homepage content editor"}</h4>
+                  <p className="mt-2 text-xs leading-6 text-ink-4">{ar ? "عدّل القوائم مباشرة من الحقول التالية. تغييرات كل لغة تحفظ في سجلها المستقل، ويمكنك إضافة أو حذف عناصر دون كتابة JSON." : "Edit the homepage lists directly. Each language is saved to its own CMS record, and items can be added or removed without editing JSON."}</p>
+                </div>
+                {HOME_OVERVIEW_GROUPS.map((group) => {
+                  const rows = Array.isArray(homepageOverview[group.key])
+                    ? (homepageOverview[group.key] as unknown[]).filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item))).slice(0, 20)
+                    : [];
+                  return (
+                    <div key={group.key} className="rounded-2xl border border-violet-500/15 bg-[var(--bg-1)]/40 p-4">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <strong className="text-sm text-ink-1">{ar ? group.ar : group.en}</strong>
+                        <button type="button" className="admin-tool-button" onClick={() => addHomeOverviewItem(group.key)} disabled={rows.length >= 20}><Plus size={14} />{ar ? "إضافة عنصر" : "Add item"}</button>
+                      </div>
+                      {rows.length ? <div className="space-y-3">{rows.map((item, index) => (
+                        <div key={`${group.key}-${index}`} className="rounded-xl border border-violet-500/10 bg-[var(--bg-glass)] p-3">
+                          <div className="mb-3 flex items-center justify-between gap-3"><span className="text-xs text-ink-4">{ar ? `عنصر ${index + 1}` : `Item ${index + 1}`}</span><button type="button" className="admin-tool-button" onClick={() => removeHomeOverviewItem(group.key, index)}><Trash2 size={13} />{ar ? "حذف" : "Remove"}</button></div>
+                          <div className="form-grid">{group.fields.map((field) => (
+                            <label key={field.key} className={field.multiline ? "wide" : ""}><span>{ar ? field.ar : field.en}{field.multiline ? <textarea rows={3} value={typeof item[field.key] === "string" ? item[field.key] as string : ""} onChange={(event) => updateHomeOverviewItem(group.key, index, field.key, event.target.value)} /> : <input value={typeof item[field.key] === "string" ? item[field.key] as string : ""} onChange={(event) => updateHomeOverviewItem(group.key, index, field.key, event.target.value)} />}</span></label>
+                          ))}</div>
+                        </div>
+                      ))}</div> : <p className="text-xs text-ink-4">{ar ? "لا توجد عناصر بعد. أضف أول عنصر من الزر." : "No items yet. Add the first item above."}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+            {!(["home", "projects", "case-studies"].includes(pageKey)) ? (
+              <div className="mb-5 space-y-3">
+                {cardRows.map((card, index) => (
+                  <div key={index} className="rounded-2xl border border-violet-500/15 bg-[var(--bg-1)]/45 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <strong className="text-sm text-ink-1">{ar ? `البطاقة ${index + 1}` : `Card ${index + 1}`}</strong>
+                      <button type="button" className="admin-tool-button" onClick={() => removeCard(index)} aria-label={ar ? `حذف البطاقة ${index + 1}` : `Remove card ${index + 1}`}><Trash2 size={14} />{ar ? "حذف" : "Remove"}</button>
+                    </div>
+                    <div className="form-grid">
+                      <label><span>{ar ? "العنوان" : "Title"}<input value={typeof card.title === "string" ? card.title : ""} onChange={(event) => updateCard(index, "title", event.target.value)} /></span></label>
+                      <label><span>{ar ? "الرقم" : "Number"}<input value={typeof card.number === "string" ? card.number : ""} onChange={(event) => updateCard(index, "number", event.target.value)} /></span></label>
+                      <label><span>{ar ? "الرمز" : "Icon"}<input value={typeof card.icon === "string" ? card.icon : "◇"} maxLength={24} onChange={(event) => updateCard(index, "icon", event.target.value)} /></span></label>
+                      <label className="wide"><span>{ar ? "الوصف" : "Description"}<textarea rows={3} value={typeof card.body === "string" ? card.body : ""} onChange={(event) => updateCard(index, "body", event.target.value)} /></span></label>
+                      <label className="wide"><span>{ar ? "الوسوم (افصل بينها بفاصلة)" : "Tags (comma separated)"}<input value={Array.isArray(card.tags) ? card.tags.filter((tag): tag is string => typeof tag === "string").join(", ") : ""} onChange={(event) => updateCard(index, "tags", event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 12))} /></span></label>
+                    </div>
+                  </div>
+                ))}
+                <button type="button" className="admin-tool-button" onClick={addCard} disabled={cardRows.length >= 40}><Plus size={15} />{ar ? "إضافة بطاقة" : "Add card"}</button>
+              </div>
+            ) : (
+              <p className="mb-4 rounded-xl border border-violet-500/15 p-4 text-sm leading-7 text-ink-3">{pageKey === "home" ? (ar ? "تظهر قوائم الرئيسية في المحرر المرئي أعلاه؛ استخدم وضع المطور فقط إذا كنت تعدّل إعدادات متقدمة مثل أسماء مشاهد 3D." : "Homepage lists are editable in the visual editor above; use developer mode only for advanced settings such as 3D scene names.") : (ar ? "الأرشيف ودراسات الحالة يستخدمان سجلات المشروعات من قسم المشروعات. عدّل نصوص القسم الخاصة بهما من حقولها أو من وضع المطور." : "Project archive and case studies use records from the Projects area. Their custom copy is available in the fields above and advanced mode.")}</p>
+            )}
+            <details className="rounded-xl border border-violet-500/15 p-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-ink-1"><span className="flex items-center gap-2"><Code2 size={14} />{ar ? "وضع المطور — JSON متقدم" : "Developer mode — advanced JSON"}</span><ChevronDown size={15} /></summary>
+              <p className="my-3 text-xs leading-6 text-ink-4">{ar ? "لا تحتاج هذه الحقول للتعديل اليومي. أي JSON غير صحيح سيمنع الحفظ مع إظهار رسالة خطأ." : "These fields are not needed for routine editing. Invalid JSON prevents saving and shows an error."}</p>
+              <div className="form-grid">
+                <label className="wide"><span>{ar ? "البطاقات (JSON)" : "Cards JSON"}<textarea rows={10} spellCheck={false} className="font-mono text-xs" value={cardsJson} onChange={(event) => setCardsJson(event.target.value)} /></span></label>
+                <label className="wide"><span>{ar ? "الأقسام (JSON)" : "Sections JSON"}<textarea rows={14} spellCheck={false} className="font-mono text-xs" value={sectionsJson} onChange={(event) => setSectionsJson(event.target.value)} /></span></label>
+              </div>
+            </details>
           </section>
 
           <div className="form-actions">

@@ -2,15 +2,17 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Download, ExternalLink, Search } from "lucide-react";
+import { Download, ExternalLink } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 
 type Row = Record<string, any>;
 type Audit = {
   id: string;
+  kind: "project" | "page";
   name: string;
   slug: string;
+  reviewHref: string;
   issues: string[];
   score: number;
   status: string;
@@ -37,62 +39,88 @@ export default function SeoAuditPage() {
   useEffect(() => {
     let live = true;
     (async () => {
-      const { data, error } = await sb.from("projects").select("*");
+      const [projectResult, pageResult, settingsResult] = await Promise.all([
+        sb.from("projects").select("id,slug,status,title_en,title_ar,summary_en,summary_ar,cover_image,featured_image,hero_image"),
+        sb.from("site_page_content").select("page_key,locale,title,description,seo_title,seo_description,is_published,updated_at"),
+        sb.from("site_settings").select("home_title_ar,home_title_en,home_desc_ar,home_desc_en").eq("id", 1).maybeSingle(),
+      ]);
       if (!live) return;
-      if (error) {
-        setError(error.message);
-        setRows([]);
-      } else setRows(data || []);
+      const errors = [projectResult.error, pageResult.error, settingsResult.error].filter(Boolean);
+      setError(errors.map((item) => item?.message).filter(Boolean).join(" · "));
+      const settings = (settingsResult.data || {}) as Row;
+      const projectRows = (projectResult.data || []).map((row) => ({ ...row, audit_kind: "project" }));
+      const pageRows = (pageResult.data || []).map((row) => ({
+        ...row,
+        audit_kind: "page",
+        home_title_ar: settings.home_title_ar,
+        home_title_en: settings.home_title_en,
+        home_desc_ar: settings.home_desc_ar,
+        home_desc_en: settings.home_desc_en,
+      }));
+      setRows([...pageRows, ...projectRows]);
       setLoading(false);
     })();
-    return () => {
-      live = false;
-    };
+    return () => { live = false; };
   }, [sb]);
 
-  const audits = useMemo<Audit[]>(
-    () =>
-      rows.map((r, i) => {
-        const name =
-          first(r, ["title_en", "name_en", "title", "name", "slug"]) ||
-          `Project ${i + 1}`;
-        const slug = first(r, ["slug", "id"]) || String(i + 1);
-        const issues: string[] = [];
+  const audits = useMemo<Audit[]>(() => rows.map((r, i) => {
+    const isPage = r.audit_kind === "page";
+    const pageLocale = r.locale === "en" ? "en" : "ar";
+    const pageKey = String(r.page_key || "");
+    const title = isPage
+      ? first(r, [pageKey === "home" ? `home_title_${pageLocale}` : "title", "title", "eyebrow"]) || pageKey
+      : first(r, ar ? ["title_ar", "title_en", "slug"] : ["title_en", "title_ar", "slug"]) || `Project ${i + 1}`;
+    const slug = isPage
+      ? `${pageLocale}${pageKey === "home" ? "" : `/${pageKey}`}`
+      : first(r, ["slug", "id"]) || String(i + 1);
+    const issues: string[] = [];
 
-        const titleEn = first(r, ["title_en", "name_en"]);
-        const titleAr = first(r, ["title_ar", "name_ar"]);
-        const descEn = first(r, [
-          "summary_en",
-          "description_en",
-          "short_description_en",
-        ]);
-        const descAr = first(r, ["summary_ar", "description_ar"]);
-        const image = first(r, [
-          "cover_image",
-          "image_url",
-          "thumbnail",
-          "hero_image",
-        ]);
+    if (isPage) {
+      const visibleTitle = first(r, [pageKey === "home" ? `home_title_${pageLocale}` : "title"]);
+      const visibleDescription = first(r, [pageKey === "home" ? `home_desc_${pageLocale}` : "description"]);
+      const seoTitle = first(r, ["seo_title"]);
+      const seoDescription = first(r, ["seo_description"]);
+      if (!visibleTitle) issues.push(ar ? "عنوان الصفحة ناقص" : "Missing page title");
+      if (!visibleDescription) issues.push(ar ? "وصف الصفحة ناقص" : "Missing page description");
+      if (!seoTitle) issues.push(ar ? "عنوان SEO ناقص" : "Missing SEO title");
+      else if (seoTitle.length < 25 || seoTitle.length > 65) issues.push(ar ? "راجع طول عنوان SEO" : "Review SEO title length");
+      if (!seoDescription) issues.push(ar ? "وصف SEO ناقص" : "Missing SEO description");
+      else if (seoDescription.length < 70 || seoDescription.length > 175) issues.push(ar ? "راجع طول وصف SEO" : "Review SEO description length");
+      if (r.is_published === false) issues.push(ar ? "الصفحة غير منشورة" : "Page is unpublished");
+      return {
+        id: `page-${pageKey}-${pageLocale}`,
+        kind: "page",
+        name: `${title} · ${pageLocale.toUpperCase()}`,
+        slug,
+        reviewHref: `/admin/content?page=${encodeURIComponent(pageKey)}&locale=${pageLocale}`,
+        issues,
+        score: Math.max(0, 100 - issues.length * 16),
+        status: r.is_published === false ? "draft" : "published",
+      };
+    }
 
-        if (!titleEn) issues.push(ar ? "عنوان إنجليزي ناقص" : "Missing EN title");
-        if (!titleAr) issues.push(ar ? "عنوان عربي ناقص" : "Missing AR title");
-        if (!descEn) issues.push(ar ? "وصف إنجليزي ناقص" : "Missing EN summary");
-        if (!descAr) issues.push(ar ? "وصف عربي ناقص" : "Missing AR summary");
-        if (!image) issues.push(ar ? "صورة غلاف ناقصة" : "Missing cover image");
-
-        const status = String(r.status || (r.published ? "published" : "draft"));
-
-        return {
-          id: String(r.id || slug),
-          name,
-          slug,
-          issues,
-          score: Math.max(0, 100 - issues.length * 20),
-          status,
-        };
-      }),
-    [rows, ar]
-  );
+    const titleEn = first(r, ["title_en", "name_en"]);
+    const titleAr = first(r, ["title_ar", "name_ar"]);
+    const descEn = first(r, ["summary_en", "description_en", "short_description_en"]);
+    const descAr = first(r, ["summary_ar", "description_ar"]);
+    const image = first(r, ["cover_image", "image_url", "thumbnail", "hero_image"]);
+    if (!titleEn) issues.push(ar ? "عنوان إنجليزي ناقص" : "Missing EN title");
+    if (!titleAr) issues.push(ar ? "عنوان عربي ناقص" : "Missing AR title");
+    if (!descEn) issues.push(ar ? "وصف إنجليزي ناقص" : "Missing EN summary");
+    if (!descAr) issues.push(ar ? "وصف عربي ناقص" : "Missing AR summary");
+    if (!image) issues.push(ar ? "صورة غلاف ناقصة" : "Missing cover image");
+    const status = String(r.status || "draft");
+    return {
+      id: String(r.id || slug),
+      kind: "project",
+      name: title,
+      slug,
+      reviewHref: `/admin/projects?edit=${encodeURIComponent(String(r.id || slug))}`,
+      issues,
+      score: Math.max(0, 100 - issues.length * 20),
+      status,
+    };
+  }), [rows, ar]);
 
   const shown = audits.filter(
     (a) =>
@@ -109,8 +137,9 @@ export default function SeoAuditPage() {
 
   const exportCsv = () => {
     const data = [
-      ["Project", "Slug", "Score", "Status", "Issues"],
+      ["Type", "Page / Project", "Slug", "Score", "Status", "Issues"],
       ...shown.map((a) => [
+        a.kind,
         a.name,
         a.slug,
         String(a.score),
@@ -143,8 +172,8 @@ export default function SeoAuditPage() {
           <h2>{ar ? "فحص جودة المحتوى وSEO" : "Content quality & SEO audit"}</h2>
           <p>
             {ar
-              ? "مراجعة سريعة لاكتمال بيانات المشاريع قبل نشرها. الفحص لا يغيّر أي بيانات."
-              : "A safe review of project content completeness before publishing. This audit never changes your data."}
+              ? "راجع بيانات SEO لكل صفحة عربية وإنجليزية، بالإضافة إلى عناوين ووصف وصور المشروعات. الفحص لا يغيّر أي بيانات."
+              : "Review SEO metadata for every Arabic/English CMS page alongside project titles, summaries and cover images. This audit never changes data."}
           </p>
         </div>
         <div className="admin-head-actions">
@@ -160,7 +189,7 @@ export default function SeoAuditPage() {
 
       {error && (
         <div className="admin-notice">
-          {ar ? "تعذر قراءة جدول المشاريع: " : "Could not read projects table: "}
+          {ar ? "تعذر قراءة بعض بيانات التدقيق: " : "Could not read some audit data: "}
           {error}
         </div>
       )}
@@ -169,7 +198,7 @@ export default function SeoAuditPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           {
-            label: ar ? "مشاريع تمت مراجعتها" : "Projects reviewed",
+            label: ar ? "صفحات ومشروعات" : "Pages & projects",
             value: audits.length,
             icon: "◫",
             color: "text-violet-300",
@@ -223,12 +252,12 @@ export default function SeoAuditPage() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
-            <option value="all">{ar ? "كل المشاريع" : "All projects"}</option>
+            <option value="all">{ar ? "كل الصفحات والمشروعات" : "All records"}</option>
             <option value="issues">
               {ar ? "تحتاج مراجعة" : "Needs review"}
             </option>
             <option value="ready">
-              {ar ? "مكتملة الحقول" : "Complete fields"}
+              {ar ? "مكتملة الحقول" : "Ready"}
             </option>
           </select>
         </div>
@@ -287,11 +316,11 @@ export default function SeoAuditPage() {
                   </div>
                 </div>
                 <Link
-                  href={`/admin/projects/${a.id}/media`}
+                  href={a.reviewHref}
                   className="admin-secondary text-xs shrink-0"
                 >
                   <ExternalLink size={12} />
-                  {ar ? "مراجعة" : "Review"}
+                  {ar ? (a.kind === "page" ? "تعديل الصفحة" : "مراجعة المشروع") : (a.kind === "page" ? "Edit page" : "Review project")}
                 </Link>
               </motion.article>
             ))}
@@ -301,8 +330,8 @@ export default function SeoAuditPage() {
 
       <div className="admin-notice mt-4">
         {ar
-          ? "ملاحظة: يعتمد الفحص على أسماء الحقول المتاحة في سجل المشروع. لا يتحقق من سرعة الصفحة أو فهرسة Google أو صحة الروابط الخارجية."
-          : "Note: this audit checks available project fields only. It does not test page speed, Google indexing or external link validity."}
+          ? "الفحص يراجع اكتمال حقول المحتوى وبيانات SEO المسجلة فقط؛ لا يقيس Core Web Vitals ولا يؤكد الفهرسة الفعلية أو صلاحية الروابط الخارجية."
+          : "This checks stored content and SEO metadata only; it does not measure Core Web Vitals, confirm Google indexing, or validate external links."}
       </div>
     </div>
   );

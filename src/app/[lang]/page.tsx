@@ -3,7 +3,7 @@ import ClientShowcase from "../../components/ClientShowcase";
 import HomeOverview from "../../components/HomeOverview";
 import HomeProjectsCTA from "../../components/HomeProjectsCTA";
 import TechnologyStack from "../../components/TechnologyStack";
-import { getHome } from "../../lib/data";
+import { getProjectArchive, getSiteSettings } from "../../lib/data";
 import { tr, pick, isLocale } from "../../lib/i18n";
 import { pageSeo } from "../../lib/seo";
 import type { Locale } from "../../lib/types";
@@ -13,7 +13,7 @@ export const revalidate = 60;
 
 export async function generateMetadata({ params }: { params: { lang: string } }) {
   const lang: Locale = isLocale(params.lang) ? params.lang : "ar";
-  const [{ settings }, cmsHome] = await Promise.all([getHome(), getPageContent("home", lang)]);
+  const [settings, cmsHome] = await Promise.all([getSiteSettings(), getPageContent("home", lang)]);
   const title = cmsHome?.seo_title || (lang === "ar"
     ? "تطوير البرمجيات والذكاء الاصطناعي والمنتجات الرقمية"
     : "Software, AI & Digital Product Engineering");
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: { params: { lang: string } })
 export default async function Home({ params }) {
   const { lang } = params;
   const T = tr(lang);
-  const [{ cats, projects, settings, configured, dataError }, cmsHome] = await Promise.all([getHome(), getPageContent("home", lang)]);
+  const [{ cats, projects, configured, dataError }, settings, cmsHome] = await Promise.all([getProjectArchive(), getSiteSettings(), getPageContent("home", lang)]);
   const cmsSections = (cmsHome?.sections && typeof cmsHome.sections === "object" ? cmsHome.sections : {}) as Record<string, any>;
   const heroCapabilities = Array.isArray(cmsSections.heroCapabilities)
     ? cmsSections.heroCapabilities.filter((item: unknown): item is string => typeof item === "string").slice(0, 3)

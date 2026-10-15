@@ -90,15 +90,18 @@ if (!heroCore.includes('system.current.position.y = Math.sin(time * 0.42) * 0.04
 }
 
 const projectsPage = fs.readFileSync(path.join(root, 'src/app/[lang]/projects/page.tsx'), 'utf8');
-if (!projectsPage.includes('Promise.all([') || !projectsPage.includes('export const revalidate = 300;')) {
+if (!projectsPage.includes('Promise.all([') || !projectsPage.includes('export const revalidate = 300;') || !projectsPage.includes('getProjectArchive')) {
   failures.push('projects route concurrency/cache optimizations are missing');
 }
 const transitionFile = fs.readFileSync(path.join(root, 'src/components/motion/RouteTransition.tsx'), 'utf8');
-if (!transitionFile.includes('const MAX_CURTAIN_MS = 1_650') ||
-    !transitionFile.includes('value={preloadVisuals || Boolean(reducedMotion)}') ||
-    !transitionFile.includes('allRouteVisualsResolved') ||
-    !transitionFile.includes('LAZY_VISUAL_SELECTOR')) {
-  failures.push('bounded route curtain / route-wide 3D preparation safeguards are missing');
+if (!transitionFile.includes('const CLICK_WATCHDOG_MS = 1_350') ||
+    !transitionFile.includes('const ROUTE_WATCHDOG_MS = 2_400') ||
+    !transitionFile.includes('initial={false}') ||
+    !transitionFile.includes('document.addEventListener("click", onDocumentClick, true)') ||
+    !transitionFile.includes('VISIBLE_VISUAL_SELECTOR') ||
+    !transitionFile.includes('rect.top < window.innerHeight + 360') ||
+    !transitionFile.includes('value={preloadVisuals}')) {
+  failures.push('click-first route transition / visible-only 3D preparation safeguards are missing');
 }
 const lazyVisualFile = fs.readFileSync(path.join(root, 'src/components/visuals/LazyVisual.tsx'), 'utf8');
 if (!lazyVisualFile.includes('if (preloadRouteVisuals && !prepared)') ||
@@ -108,15 +111,28 @@ if (!lazyVisualFile.includes('if (preloadRouteVisuals && !prepared)') ||
 const headerSource = fs.readFileSync(path.join(root, 'src/components/Header.tsx'), 'utf8');
 const stableLinkSource = headerSource.slice(headerSource.indexOf('function StableNavLink('), headerSource.indexOf('export default function Header('));
 if (!stableLinkSource.includes('function StableNavLink(') ||
+    !stableLinkSource.includes('<Link href={href} prefetch={true}') ||
     !stableLinkSource.includes('onMouseEnter={prefetchRoute}') ||
-    stableLinkSource.includes('event.preventDefault()') ||
-    stableLinkSource.includes('router.push(') ||
-    !stableLinkSource.includes('prefetch={false}') ||
+    !stableLinkSource.includes('onPointerDown={prefetchRoute}') ||
+    stableLinkSource.includes('if (href.endsWith("/projects"))') ||
     !headerSource.includes('const closeNavigationMenus = useCallback') ||
-    !headerSource.includes('prefetch={false}') ||
     !headerSource.includes('pointerEvents: "none"') ||
     !headerSource.includes('const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)')) {
-  failures.push('native single-click localized navigation / intent prefetch / pointer-inert dropdown exits are missing');
+  failures.push('single-click App Router navigation / route prefetch / pointer-inert dropdown exits are missing');
+}
+const homeProjectsCta = fs.readFileSync(path.join(root, 'src/components/HomeProjectsCTA.tsx'), 'utf8');
+if (!homeProjectsCta.includes('<Link href={`/${lang}/projects`} prefetch={true} className="btn-primary">')) {
+  failures.push('homepage projects CTA should use prefetched client-side navigation');
+}
+const projectCardSource = fs.readFileSync(path.join(root, 'src/components/ProjectCard.tsx'), 'utf8');
+if (!projectCardSource.includes('const prefetchDetails = index < 3') ||
+    !projectCardSource.includes('onTouchStart={() => router.prefetch(href)}') ||
+    !projectCardSource.includes('prefetch={prefetchDetails}')) {
+  failures.push('project details must prefetch the first row and use-intent navigation without flooding mobile connections');
+}
+const genericLoading = fs.readFileSync(path.join(root, 'src/app/[lang]/loading.tsx'), 'utf8');
+if (!genericLoading.includes('aria-busy="true"') || !genericLoading.includes('data-route-loading="true"')) {
+  failures.push('locale-level accessible loading skeleton is missing');
 }
 const galaxySource = fs.readFileSync(path.join(root, 'src/components/visuals/GalaxyBackground.tsx'), 'utf8');
 if (!galaxySource.includes('followUpMeteorAt') ||
@@ -136,6 +152,9 @@ if (!supabaseFile.includes('supabaseFetchWithTimeout') ||
   failures.push('Supabase request timeout protection is missing');
 }
 const pageContentFile = fs.readFileSync(path.join(root, 'src/lib/page-content.ts'), 'utf8');
+if (!pageContentFile.includes('["seoTitle", "seo_title"]') || !pageContentFile.includes('["seoDescription", "seo_description"]')) {
+  failures.push('CMS SEO title/description fields do not flow into page metadata');
+}
 if (!pageContentFile.includes('withContentDeadline(readPageContent(pageKey, locale))') ||
     !pageContentFile.includes('timeoutMs = 1_100')) {
   failures.push('CMS page content deadline / fallback protection is missing');
@@ -145,12 +164,71 @@ if (!motionFile.includes('initial={reduce ? { opacity: 1, rotateX: 0, y: 0 }') |
     !motionFile.includes('whileInView={reduce ? undefined :')) {
   failures.push('reduced-motion opacity initial state guard is missing');
 }
+const aboutRoute = fs.readFileSync(path.join(root, 'src/app/[lang]/about/page.tsx'), 'utf8');
+if (!aboutRoute.includes('<AboutStats lang={lang} items={c.aboutStats} />') ||
+    !motionFile.includes('Array.isArray(items)') ||
+    !motionFile.includes('if (supplied && supplied.length === 0) return null')) {
+  failures.push('About highlight cards are not sourced from per-locale CMS content / empty-state behavior');
+}
+const contentEditorSource = fs.readFileSync(path.join(root, 'src/app/admin/content/page.tsx'), 'utf8');
+const aboutEditorGuards = [
+  'const ABOUT_STATS_DEFAULTS',
+  'loadedSections.aboutStats = ABOUT_STATS_DEFAULTS[contentLocale]',
+  'const updateAboutStat',
+  'const addAboutStat',
+  'const removeAboutStat',
+  'pageKey === "about" ? (',
+];
+if (!aboutEditorGuards.every((guard) => contentEditorSource.includes(guard))) {
+  failures.push('About highlights do not have a safe per-locale dashboard editor');
+}
 const visitorFile = fs.readFileSync(path.join(root, 'src/components/admin/LiveVisitors.tsx'), 'utf8');
 const setupSql = fs.readFileSync(path.join(root, 'supabase/01_setup.sql'), 'utf8');
 if (!visitorFile.includes('setInterval(() => void poll(), 60_000') ||
     !visitorFile.includes('document.hidden') ||
     !setupSql.includes('idx_visitor_sessions_last_seen_at')) {
   failures.push('low-frequency live visitor polling / index safeguards are missing');
+}
+
+
+const contentEditor = contentEditorSource;
+if (!contentEditor.includes('const cardRows = useMemo') ||
+    !contentEditor.includes('const updateCard = (index: number, key: string, value: unknown) =>') ||
+    !contentEditor.includes('Developer mode — advanced JSON') ||
+    !contentEditor.includes('pageKey === "home" ? true : form.is_published')) {
+  failures.push('CMS visual card editor / safe homepage publication behavior is missing');
+}
+if (!projectsPage.includes('const primaryLabel = typeof c.primary === "string"') ||
+    !projectsPage.includes('const primaryHref = typeof c.primaryHref === "string"') ||
+    !fs.readFileSync(path.join(root, 'src/app/[lang]/case-studies/page.tsx'), 'utf8').includes('const primaryLabel = typeof c.primary === "string"')) {
+  failures.push('projects archive / case studies CTA fields are not connected to CMS copy');
+}
+
+
+
+const navResolver = fs.readFileSync(path.join(root, 'src/lib/site-navigation.ts'), 'utf8');
+if (!navResolver.includes('.replace(/^\\/(?:ar|en)(?=\\/)/i, "")') ||
+    !navResolver.includes('.split(/[?#]/, 1)[0]')) {
+  failures.push('dashboard/public navigation should normalize localized route values before whitelist validation');
+}
+
+const seoAuditFile = fs.readFileSync(path.join(root, 'src/app/admin/seo/page.tsx'), 'utf8');
+if (!seoAuditFile.includes('select("id,slug,status,title_en,title_ar,summary_en,summary_ar,cover_image,featured_image,hero_image")')) {
+  failures.push('SEO content audit should load only the project fields it audits');
+}
+if (!seoAuditFile.includes('/admin/projects?edit=') || !fs.readFileSync(path.join(root, 'src/app/admin/projects/page.tsx'), 'utf8').includes('const requestedId = qs.get("edit")')) {
+  failures.push('SEO audit project links should open the relevant project record in the visual editor');
+}
+const marketingComponent = fs.readFileSync(path.join(root, 'src/components/marketing/MarketingPage.tsx'), 'utf8');
+if (!marketingComponent.includes('isProjectsArchiveHref') || !marketingComponent.includes('<Link href={secondaryHref} prefetch={isProjectsArchiveHref(secondaryHref) ? true : undefined} className="btn-ghost">')) {
+  failures.push('CMS-managed marketing-page CTAs should use App Router links with archive prefetch');
+}
+const marketingRouteFiles = ['services', 'industries', 'about', 'process', 'insights', 'contact', 'faq', 'careers'];
+for (const page of marketingRouteFiles) {
+  const route = fs.readFileSync(path.join(root, `src/app/[lang]/${page}/page.tsx`), 'utf8');
+  if (!route.includes('sections={c.sections as Record<string, unknown> | null}')) {
+    failures.push(`${page} route does not forward CMS sections to MarketingPage`);
+  }
 }
 
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -170,13 +248,44 @@ if (!pkg.dependencies?.gsap || !pkg.dependencies?.lenis) {
   failures.push('GSAP or Lenis dependency is missing');
 }
 
+const editorialSql = fs.readFileSync(path.join(root, 'supabase/04_editorial_cms.sql'), 'utf8');
+const expectedCmsPages = ['home', 'services', 'industries', 'about', 'process', 'insights', 'contact', 'faq', 'careers', 'case-studies', 'projects'];
+for (const pageKey of expectedCmsPages) {
+  for (const locale of ['ar', 'en']) {
+    const seeded = new RegExp(`\\n\\s+'${pageKey}', '${locale}',`).test(editorialSql);
+    if (!seeded) failures.push(`CMS seed missing ${pageKey}/${locale}`);
+  }
+}
+if (!fs.readFileSync(path.join(root, 'src/lib/page-content.ts'), 'utf8').includes('["seoTitle", "seo_title"]')) {
+  failures.push('SEO dashboard title field is not wired to page metadata');
+}
+const dataSource = fs.readFileSync(path.join(root, 'src/lib/data.ts'), 'utf8');
+const getProjectBody = dataSource.slice(dataSource.indexOf('export async function getProject('));
+if (!getProjectBody.includes('archiveFallback ??= await getProjectArchive()') || getProjectBody.includes('home.projects') || getProjectBody.includes('home.cats')) {
+  failures.push('project detail lookup must use a lightweight archive only as a compatibility fallback');
+}
+const homeRoute = fs.readFileSync(path.join(root, 'src/app/[lang]/page.tsx'), 'utf8');
+if (!homeRoute.includes('getProjectArchive()') || !homeRoute.includes('getSiteSettings()') || homeRoute.includes('getHome()')) {
+  failures.push('homepage should read the lightweight project archive and site settings instead of full project galleries');
+}
 const sitemapSource = fs.readFileSync(path.join(root, 'src/app/sitemap.ts'), 'utf8');
+if (!sitemapSource.includes('getProjectArchive') || sitemapSource.includes('getHome')) {
+  failures.push('sitemap should use the lightweight project archive query instead of full homepage data');
+}
 const routePaths = [...sitemapSource.matchAll(/path:\s*["']([^"']+)["']/g)].map((match) => match[1]);
 for (const routePath of routePaths) {
   if (!fs.existsSync(path.join(root, 'src/app/[lang]', routePath, 'page.tsx'))) {
     failures.push(`sitemap route has no local page file: ${routePath}`);
   }
 }
+
+if (routePaths.includes('technologies') || routePaths.includes('blog') || routePaths.includes('testimonials')) {
+  failures.push('sitemap includes legacy routes that permanently redirect instead of canonical content URLs');
+}
+if (!cmsFile.includes('function safeContentHref') || !cmsFile.includes('clean.startsWith("#")')) {
+  failures.push('CMS links do not safely support approved same-page anchors');
+}
+
 for (const requiredRoute of [
   'src/app/[lang]/projects/page.tsx',
   'src/app/[lang]/projects/[id]/page.tsx',

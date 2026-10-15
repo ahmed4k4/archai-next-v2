@@ -36,7 +36,10 @@ export default function LazyVisual({
       const rect = element.getBoundingClientRect();
       const style = window.getComputedStyle(element);
       const hasLayout = rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
-      if (hasLayout) {
+      // Route transitions may prepare only scenes near the viewport. Avoid mounting every
+      // below-the-fold Canvas at once: that stalls the main thread and overwhelms mobile GPUs.
+      const nearViewport = rect.bottom > -160 && rect.top < window.innerHeight + 360;
+      if (hasLayout && nearViewport) {
         setPrepared(true);
         return;
       }

@@ -4,7 +4,7 @@ import Gallery from "@/components/Gallery";
 import ProjectCard from "@/components/ProjectCard";
 import LazyVisual from "@/components/visuals/LazyVisual";
 import { sceneForProject } from "@/components/visuals/PageScenes";
-import { getHome, getProject } from "@/lib/data";
+import { getProjectArchive, getProject } from "@/lib/data";
 import { LOCALES, pick, tr, safeUrl, projectImages } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/supabase";
 import { pageSeo } from "@/lib/seo";
@@ -18,7 +18,7 @@ export const revalidate = 60;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  const { projects } = await getHome();
+  const { projects } = await getProjectArchive();
   return LOCALES.flatMap((lang) =>
     projects.map((p) => ({ lang, id: p.slug || p.id }))
   );
@@ -70,10 +70,10 @@ export default async function ProjectPage({
 }) {
   const { lang, id } = params;
   const T = tr(lang as any);
-  const p = await getProject(id);
+  const [p, archive] = await Promise.all([getProject(id), getProjectArchive()]);
   if (!p) notFound();
 
-  const { projects } = await getHome();
+  const { projects } = archive;
   const title = pick(p, "title", lang as any);
   const catName = pick(p.categories, "name", lang as any);
   const technologies = Array.isArray(p.project_technologies) ? p.project_technologies : [];

@@ -69,26 +69,24 @@ type StableNavLinkProps = {
  * also avoids a cold first click on the projects route in production. */
 function StableNavLink({ href, label, active, onIntent }: StableNavLinkProps) {
   const prefetchRoute = () => onIntent(href);
-  return (
-    <Link
-      href={href}
-      // Avoid eager RSC prefetch for every visible nav item; warm the route on real user intent.
-      // Navigation itself stays native to Next <Link> so there is only one router interception.
-      prefetch={false}
-      onMouseEnter={prefetchRoute}
-      onTouchStart={prefetchRoute}
-      onFocus={prefetchRoute}
-      aria-current={active ? "page" : undefined}
-      className={`group relative rounded-lg px-3 py-2 text-sm transition-colors hover:bg-violet-500/10 ${
-        active ? "font-semibold text-ink-0" : "font-medium text-ink-2 hover:text-ink-0"
+  const className = `group relative rounded-lg px-3 py-2 text-sm transition-colors hover:bg-violet-500/10 ${
+    active ? "font-semibold text-ink-0" : "font-medium text-ink-2 hover:text-ink-0"
+  }`;
+  const indicator = (
+    <span
+      className={`pointer-events-none absolute bottom-1 left-3 right-3 h-px origin-center bg-grad-signal transition-transform duration-300 ${
+        active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
       }`}
-    >
+    />
+  );
+
+  // Keep all localized routes on the App Router so transitions start immediately and
+  // the destination can be prefetched instead of forcing a slow full-document reload.
+  return (
+    <Link href={href} prefetch={true} onMouseEnter={prefetchRoute} onPointerDown={prefetchRoute} onFocus={prefetchRoute}
+      aria-current={active ? "page" : undefined} className={className}>
       {label}
-      <span
-        className={`pointer-events-none absolute bottom-1 left-3 right-3 h-px origin-center bg-grad-signal transition-transform duration-300 ${
-          active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
-        }`}
-      />
+      {indicator}
     </Link>
   );
 }
@@ -136,6 +134,9 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
       localStorage.setItem("lang", next);
     } catch {}
     const y = typeof window !== "undefined" ? window.scrollY : 0;
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("archai:navigation-intent", { detail: { href: newPath } }));
+    }
     startLangTransition(() => {
       router.push(newPath, { scroll: false });
       /* restore scroll after the new route paints */
@@ -294,7 +295,6 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
                               <Link
                                 key={c.id}
                                 href={`/${lang}/categories/${c.slug}`}
-                                prefetch={false}
                                 onMouseEnter={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
                                 onTouchStart={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
                                 onFocus={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
@@ -369,7 +369,6 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
                               <Link
                                 key={item.href}
                                 href={`/${lang}/${item.href}`}
-                                prefetch={false}
                                 onMouseEnter={() => router.prefetch(`/${lang}/${item.href}`)}
                                 onTouchStart={() => router.prefetch(`/${lang}/${item.href}`)}
                                 onFocus={() => router.prefetch(`/${lang}/${item.href}`)}
@@ -525,7 +524,6 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
                       <Link
                         key={c.id}
                         href={`/${lang}/categories/${c.slug}`}
-                        prefetch={false}
                         onMouseEnter={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
                         onTouchStart={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
                         onFocus={() => router.prefetch(`/${lang}/categories/${c.slug}`)}
@@ -548,7 +546,6 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
                     <Link
                       key={item.href}
                       href={`/${lang}/${item.href}`}
-                      prefetch={false}
                       onMouseEnter={() => router.prefetch(`/${lang}/${item.href}`)}
                       onTouchStart={() => router.prefetch(`/${lang}/${item.href}`)}
                       onFocus={() => router.prefetch(`/${lang}/${item.href}`)}

@@ -33,7 +33,14 @@ export function resolveSiteNavigation(value: unknown): SiteNavigationItem[] {
   const resolved = value.flatMap((entry): SiteNavigationItem[] => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
     const row = entry as Record<string, unknown>;
-    const href = typeof row.href === "string" ? row.href.trim().replace(/^\/+|\/+$/g, "") : "";
+    const rawHref = typeof row.href === "string" ? row.href.trim() : "";
+    // Historical dashboard records may contain a full localized path (e.g. /ar/projects).
+    // Normalize those to a known route segment while continuing to reject arbitrary URLs.
+    const href = rawHref
+      .replace(/^\/(?:ar|en)(?=\/)/i, "")
+      .replace(/^\/+|\/+$/g, "")
+      .split(/[?#]/, 1)[0]
+      .toLowerCase();
     if (!ALLOWED_ROUTES.has(href) || seen.has(href) || row.enabled === false) return [];
     seen.add(href);
 

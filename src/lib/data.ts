@@ -22,6 +22,26 @@ type HomeData = {
   dataError: boolean;
 };
 
+type SiteShellData = {
+  cats: Category[];
+  settings: SiteSettings;
+  configured: boolean;
+};
+
+export type ProjectArchiveData = {
+  cats: Category[];
+  projects: Project[];
+  configured: boolean;
+  compatibilityMode: boolean;
+  dataError: boolean;
+};
+
+const emptySiteShell = (configuredState: boolean): SiteShellData => ({
+  cats: [],
+  settings: {} as SiteSettings,
+  configured: configuredState,
+});
+
 const emptyHome = (configuredState: boolean, dataError = false): HomeData => ({
   cats: [],
   projects: [],
@@ -156,6 +176,91 @@ const cachedHome = unstable_cache(loadHome, ["home-v12-fast-failure-public-conte
   tags: ["content"],
 });
 
+// The project archive does not need gallery rows. This lighter projection avoids
+// loading each project's full image gallery just to render/filter the archive.
+const ARCHIVE_PROJECTS =
+  "id,slug,category_id,sort_order,title_en,title_ar,summary_en,summary_ar,live_url,status,cover_image,cover_thumb,hero_image,featured_image,featured,featured_sort_order,categories(id,slug,name_en,name_ar,active),project_technologies(technology),project_industries(industry)";
+
+const emptyProjectArchive = (configuredState: boolean, dataError = false): ProjectArchiveData => ({
+  cats: [],
+  projects: [],
+  configured: configuredState,
+  compatibilityMode: false,
+  dataError,
+});
+
+async function loadProjectArchive(): Promise<ProjectArchiveData> {
+  if (!configured) return emptyProjectArchive(false);
+  const sb = sbServer();
+  const [categoryResult, projectResult] = await Promise.all([
+    sb.from("categories")
+      .select("id,slug,icon,name_en,name_ar,description_en,description_ar,sort_order,active")
+      .eq("active", true)
+      .order("sort_order"),
+    sb.from("projects").select(ARCHIVE_PROJECTS).eq("status", "published").order("sort_order"),
+  ]);
+
+  let compatibilityMode = false;
+  let categoryRows: Category[] = arr<Category>(categoryResult.data);
+  if (categoryResult.error) {
+    compatibilityMode = true;
+    const compatibleCategories = await sb.from("categories")
+      .select("id,slug,name_en,name_ar,sort_order,active")
+      .eq("active", true)
+      .order("sort_order");
+    categoryRows = compatibleCategories.error ? [] : arr<Category>(compatibleCategories.data);
+  }
+
+  let projectRows: Record<string, any>[] = arr<Record<string, any>>(projectResult.data);
+  const canReadRelations = !projectResult.error;
+  if (projectResult.error) {
+    compatibilityMode = true;
+    const basicResult = await sb.from("projects").select(BASIC_PROJECTS).eq("status", "published").order("sort_order");
+    if (!basicResult.error) projectRows = arr<Record<string, any>>(basicResult.data);
+    else {
+      const minimalResult = await sb.from("projects").select(MINIMAL_PROJECTS).eq("status", "published");
+      if (minimalResult.error) throw minimalResult.error;
+      projectRows = arr<Record<string, any>>(minimalResult.data);
+    }
+  }
+
+  const categoriesById = new Map(categoryRows.map((category) => [String(category.id), category]));
+  const projects: Project[] = projectRows.map((row) => {
+    const joined = canReadRelations ? relationCategory(row.categories) : null;
+    const category = joined ?? categoriesById.get(String(row.category_id ?? "")) ?? null;
+    if (joined && !categoriesById.has(String(joined.id))) {
+      categoryRows.push(joined);
+      categoriesById.set(String(joined.id), joined);
+    }
+    return {
+      ...row,
+      categories: category,
+      project_technologies: canReadRelations ? arr(row.project_technologies) : [],
+      project_industries: canReadRelations ? arr(row.project_industries) : [],
+      // The archive uses a single cover field; gallery images are loaded on project details only.
+      project_images: [],
+    } as Project;
+  });
+  categoryRows.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+  projects.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+  return { cats: categoryRows, projects, configured: true, compatibilityMode, dataError: false };
+}
+
+const cachedProjectArchive = unstable_cache(loadProjectArchive, ["project-archive-light-v1"], {
+  revalidate: 300,
+  tags: ["content"],
+});
+
+export async function getProjectArchive(): Promise<ProjectArchiveData> {
+  if (!configured) return emptyProjectArchive(false);
+  try {
+    return await withDeadline(cachedProjectArchive(), 2_600, "project archive data");
+  } catch (error) {
+    console.error("[data] project archive unavailable:", error instanceof Error ? error.message : error);
+    return emptyProjectArchive(true, true);
+  }
+}
+
 export async function getHome(): Promise<HomeData> {
   if (!configured) return emptyHome(false);
   try {
@@ -163,6 +268,81 @@ export async function getHome(): Promise<HomeData> {
   } catch (error) {
     console.error("[data] project data unavailable; static project fallback is disabled:", error instanceof Error ? error.message : error);
     return emptyHome(true, true);
+  }
+}
+
+/** Read only the settings row needed by metadata; do not fetch the whole project catalogue. */
+const cachedSiteSettings = unstable_cache(
+  async (): Promise<SiteSettings> => {
+    if (!configured) return {} as SiteSettings;
+    const { data, error } = await sbServer().from("site_settings").select("*").eq("id", 1).maybeSingle();
+    if (error) throw error;
+    return (data || {}) as SiteSettings;
+  },
+  ["site-settings-v1"],
+  { revalidate: 300, tags: ["content"] },
+);
+
+export async function getSiteSettings(): Promise<SiteSettings> {
+  if (!configured) return {} as SiteSettings;
+  try {
+    return await withDeadline(cachedSiteSettings(), 1_900, "site settings");
+  } catch (error) {
+    console.warn("[data] site settings unavailable:", error instanceof Error ? error.message : error);
+    return {} as SiteSettings;
+  }
+}
+
+/**
+ * The shared layout needs navigation categories and brand settings, not every project
+ * gallery and technology relation. This light query keeps all public pages from loading
+ * the full portfolio just to render the header/footer.
+ */
+const cachedSiteShell = unstable_cache(
+  async (): Promise<SiteShellData> => {
+    if (!configured) return emptySiteShell(false);
+    const sb = sbServer();
+    const [categoryResult, projectCategoryResult, settings] = await Promise.all([
+      sb.from("categories")
+        .select("id,slug,icon,name_en,name_ar,description_en,description_ar,sort_order,active")
+        .eq("active", true)
+        .order("sort_order"),
+      sb.from("projects").select("category_id").eq("status", "published"),
+      cachedSiteSettings().catch(() => ({} as SiteSettings)),
+    ]);
+
+    let categories: Category[] = arr<Category>(categoryResult.data);
+    if (categoryResult.error) {
+      const compatible = await sb.from("categories")
+        .select("id,slug,name_en,name_ar,sort_order,active")
+        .eq("active", true)
+        .order("sort_order");
+      categories = compatible.error ? [] : arr<Category>(compatible.data);
+    }
+
+    // If the project-category read is unavailable, keep active categories visible rather
+    // than hiding navigation. With a valid response, show categories with published work.
+    if (!projectCategoryResult.error) {
+      const used = new Set(arr<Record<string, unknown>>(projectCategoryResult.data)
+        .map((row) => row.category_id)
+        .filter((id): id is string => typeof id === "string")
+        .map(String));
+      categories = categories.filter((category) => used.has(String(category.id)));
+    }
+    categories.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+    return { cats: categories, settings, configured: true };
+  },
+  ["site-shell-v1-lightweight"],
+  { revalidate: 300, tags: ["content"] },
+);
+
+export async function getSiteShell(): Promise<SiteShellData> {
+  if (!configured) return emptySiteShell(false);
+  try {
+    return await withDeadline(cachedSiteShell(), 2_200, "site navigation data");
+  } catch (error) {
+    console.warn("[data] site shell unavailable:", error instanceof Error ? error.message : error);
+    return { cats: [], settings: await getSiteSettings(), configured: true };
   }
 }
 
@@ -242,8 +422,7 @@ function normalizeProject(project: Record<string, any>, related?: Project | null
 export async function getProject(identifier: string): Promise<Project | null> {
   if (!configured || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,149}$/.test(identifier)) return null;
   const bySlug = !UUID.test(identifier);
-  const home = await getHome();
-  const byKey = home.projects.find((project) => project.id === identifier || project.slug === identifier) ?? null;
+  let archiveFallback: ProjectArchiveData | null = null;
 
   for (const [reader, label] of [
     [cachedProject, "full"],
@@ -254,10 +433,13 @@ export async function getProject(identifier: string): Promise<Project | null> {
       const row = await readProjectBySlugOrId(reader, identifier, bySlug);
       if (row) {
         const record = row as Record<string, any>;
-        const related = home.projects.find((project) =>
+        // The full query already includes the relations required by project detail pages.
+        // Only fetch the lightweight archive when a compatibility query omits related data.
+        if (label !== "full") archiveFallback ??= await getProjectArchive();
+        const related = archiveFallback?.projects.find((project) =>
           project.id === String(record.id) || (record.slug && project.slug === String(record.slug))
-        ) ?? byKey;
-        return normalizeProject(record, related, home.cats);
+        ) ?? null;
+        return normalizeProject(record, related, archiveFallback?.cats ?? []);
       }
     } catch (error) {
       console.warn(`[data] ${label} project query failed:`, error instanceof Error ? error.message : error);
@@ -265,5 +447,6 @@ export async function getProject(identifier: string): Promise<Project | null> {
   }
 
   // Resolve from the published DB catalogue only; never synthesize project details.
-  return byKey;
+  archiveFallback ??= await getProjectArchive();
+  return archiveFallback.projects.find((project) => project.id === identifier || project.slug === identifier) ?? null;
 }
