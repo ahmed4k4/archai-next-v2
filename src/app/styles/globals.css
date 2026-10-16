@@ -5,10 +5,11 @@
 
 :root {
   /* Typography */
-  --font-sans: "Inter", "Cairo", system-ui, -apple-system, sans-serif;
-  --font-display: "Instrument Serif", "Fraunces", "Cairo", Georgia, serif;
-  --font-mono: "JetBrains Mono", "Geist Mono", ui-monospace, monospace;
-  --font-arabic: "Cairo", system-ui, sans-serif;
+  /* Prefer installed system fonts. No render-blocking third-party font request is required. */
+  --font-sans: "Inter", "Cairo", "Segoe UI", Tahoma, system-ui, -apple-system, sans-serif;
+  --font-display: "Instrument Serif", "Fraunces", Georgia, "Times New Roman", serif;
+  --font-mono: "Geist Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+  --font-arabic: "Cairo", "Segoe UI", Tahoma, Arial, sans-serif;
 
   /* Layout */
   --header-h: 76px;
@@ -23,7 +24,7 @@
   --ink-1: #e5deff;
   --ink-2: #ad97ff;
   --ink-3: #8f96b8;
-  --ink-4: #59608a;
+  --ink-4: #858db0;
   --line-1: rgba(173, 151, 255, 0.06);
   --line-2: rgba(173, 151, 255, 0.12);
   --line-3: rgba(173, 151, 255, 0.2);
@@ -47,7 +48,7 @@
   --ink-1: #1a1d38;
   --ink-2: #2c3050;
   --ink-3: #454a70;
-  --ink-4: #6b719a;
+  --ink-4: #5f6585;
   --line-1: rgba(14, 16, 36, 0.06);
   --line-2: rgba(14, 16, 36, 0.12);
   --line-3: rgba(14, 16, 36, 0.2);
@@ -155,6 +156,11 @@ body::after { content: none !important; display: none !important; }
 @keyframes galaxy-static-drift {
   from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0; }
   to { background-position: 181px 167px, -233px 219px, 271px -257px, -307px -283px, 197px 211px; }
+}
+
+/* Touch devices keep the full-viewport star texture but avoid a permanently animated background. */
+@media (max-width: 767px), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .galaxy-background::before { animation: none !important; }
 }
 .site-layer {
   position: relative;
@@ -289,6 +295,22 @@ input, select, textarea { font: inherit; }
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* GPU-composited footer ticker: no per-frame React/JS animation work. */
+.footer-marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 3rem;
+  white-space: nowrap;
+  will-change: transform;
+}
+.footer-marquee-ltr { animation: footer-marquee-ltr 42s linear infinite; }
+.footer-marquee-rtl { animation: footer-marquee-rtl 42s linear infinite; }
+@keyframes footer-marquee-ltr { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes footer-marquee-rtl { from { transform: translateX(0); } to { transform: translateX(50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .footer-marquee-track { animation: none !important; transform: none !important; }
 }
 
 /* --------------------------------------------------------------------------
@@ -648,8 +670,8 @@ input, select, textarea { font: inherit; }
 /* Mobile performance and touch layout safeguards. Keep the design, reduce costly backdrop filters. */
 @media (max-width: 767px) {
   .glass {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     transition-duration: 240ms;
   }
   .glass:hover { transform: none; }

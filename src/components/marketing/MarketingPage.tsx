@@ -111,10 +111,10 @@ export default function MarketingPage({
       {/* ============================================================
           HERO — 3D scene + headline
           ============================================================ */}
-      <section data-gsap-scene className="relative min-h-[92vh] flex items-center pt-24 pb-20">
+      <section data-gsap-scene className="relative min-h-[min(78vh,760px)] lg:min-h-[92vh] flex items-center pt-20 pb-16 sm:pt-24 sm:pb-20">
         <div className="wrap grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center relative z-10">
           {/* Copy */}
-          <div className="order-2 lg:order-1">
+          <div className="order-1 min-w-0 lg:order-1">
             <motion.span
               className={`inline-flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.18em] uppercase ${accentClasses.text}`}
               initial={{ opacity: 0, y: -10 }}
@@ -126,11 +126,11 @@ export default function MarketingPage({
             </motion.span>
 
             <motion.h1
-              className="mt-6 font-display text-5xl md:text-6xl lg:text-7xl font-medium tracking-tight leading-[1.02] text-ink-0"
+              className="mt-6 max-w-full break-words font-display text-[clamp(2rem,9vw,3.25rem)] sm:text-5xl md:text-6xl lg:text-7xl font-medium tracking-tight leading-[1.02] text-ink-0"
               variants={textReveal}
-              initial="hidden"
+              initial={false}
               animate="show"
-              transition={{ delay: 0.1 }}
+              transition={{ duration: 0.22 }}
             >
               {title}
               <br />
@@ -141,18 +141,16 @@ export default function MarketingPage({
 
             <motion.p
               className="mt-6 text-lg leading-relaxed text-ink-3 max-w-2xl"
-              initial={{ opacity: 0, y: 20 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.6 }}
             >
               {description}
             </motion.p>
 
             <motion.div
               className="mt-10 flex flex-wrap gap-4"
-              initial={{ opacity: 0, y: 20 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.55, duration: 0.6 }}
             >
               <MagneticButton href={primaryHref} className="btn-primary">
                 {primary}
@@ -190,7 +188,7 @@ export default function MarketingPage({
 
           {/* 3D Scene */}
           <motion.div
-            className="order-1 lg:order-2 relative aspect-square w-full max-w-[600px] mx-auto"
+            className="order-2 lg:order-2 relative h-[170px] w-full max-w-[340px] mx-auto sm:aspect-square sm:h-auto sm:max-w-[440px] lg:max-w-[600px]"
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
@@ -203,7 +201,7 @@ export default function MarketingPage({
         </div>
 
         {/* Bottom index line */}
-        <div className="absolute bottom-8 left-6 right-6 flex justify-between text-[10px] font-mono text-ink-4 tracking-widest">
+        <div className="absolute bottom-8 left-6 right-6 hidden justify-between text-[10px] font-mono text-ink-4 tracking-widest sm:flex">
           <span>ARCHAI — INTEGRATED SYSTEMS</span>
           <span className={accentClasses.text}>/{kind.toUpperCase()}</span>
         </div>

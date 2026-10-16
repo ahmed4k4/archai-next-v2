@@ -7,9 +7,19 @@ module.exports = {
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
+      // Explicit production project host: keep aligned with the Supabase project used
+      // for public project-media assets. The wildcard allows future Supabase projects
+      // while still restricting the protocol and public-storage path.
+      {
+        protocol: "https",
+        hostname: "btseevpvtxpuvxlmvzkt.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/**",
+      },
       {
         protocol: "https",
         hostname: "**.supabase.co",
+        port: "",
         pathname: "/storage/v1/object/public/**",
       },
     ],

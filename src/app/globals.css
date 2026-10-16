@@ -825,3 +825,21 @@ button, a, input, select, textarea { touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Mobile rendering budget: keep glass surfaces crisp without full-screen blur/compositing layers. */
+@media (max-width: 767px), (pointer: coarse) {
+  .glass,
+  .badge,
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .glass {
+    background: color-mix(in srgb, var(--bg-2) 90%, transparent);
+    transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+  }
+
+  .badge { background: color-mix(in srgb, var(--bg-3) 88%, transparent); }
+  .glass:hover, .glass:active { transform: none; }
+}

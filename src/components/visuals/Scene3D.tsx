@@ -1,6 +1,5 @@
 "use client";
 import { Canvas, type CanvasProps, useThree, useFrame } from "@react-three/fiber";
-import { Preload, AdaptiveDpr, AdaptiveEvents } from "@react-three/drei";
 import { Component, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { useReducedMotion } from "framer-motion";
 import VisualPlaceholder, { type VisualPlaceholderKind } from "./VisualPlaceholder";
@@ -94,7 +93,8 @@ export default function Scene3D({
 }: Props) {
   const reduce = useReducedMotion();
   const hostRef = useRef<HTMLDivElement>(null);
-  const [mobile, setMobile] = useState(false);
+  // Start with the safe tier so first hydration on a phone never spins up every canvas.
+  const [mobile, setMobile] = useState(true);
   // Start with demand rendering: many scenes can mount together during route preloading.
   // A single explicit invalidate still paints the first frame and signals readiness.
   const [inView, setInView] = useState(false);
@@ -162,7 +162,10 @@ export default function Scene3D({
 
   const baseZ = cameraRecord?.position?.[2] ?? 6;
 
-  /* frameloop="demand" yields a frozen frame under reduced-motion. */
+  // Only the flagship scene keeps animating continuously on phones. Other 3D scenes
+  // paint one high-quality frame when near the viewport and preserve CPU/GPU for scrolling.
+  const shouldAnimate = !reduce && inView && (!mobile || tier === "hero");
+
   return (
     <div ref={hostRef} className={`scene-canvas ${className ?? ""}`} style={{ width: "100%", height: "100%" }}>
       <div className="scene-fallback-art" aria-hidden="true">
@@ -173,7 +176,7 @@ export default function Scene3D({
         <Canvas
           camera={effectiveCamera}
           dpr={dpr}
-          frameloop={reduce || !inView ? "demand" : "always"}
+          frameloop={shouldAnimate ? "always" : "demand"}
           gl={{
             alpha: true,
             antialias: !mobile && tier === "hero",
@@ -186,8 +189,8 @@ export default function Scene3D({
             <>
               <ambientLight intensity={0.75 * intensity} />
               <directionalLight position={[4, 4, 4]} intensity={1.4 * intensity} color="#ad97ff" />
-              <pointLight position={[-4, -3, 2]} intensity={1.6 * intensity} color="#4ce2d0" />
-              <pointLight position={[3, 3, -3]} intensity={1.1 * intensity} color="#ff6b9d" />
+              <pointLight position={[-4, -3, 2]} intensity={1.25 * intensity} color="#4ce2d0" />
+              {tier === "hero" ? <pointLight position={[3, 3, -3]} intensity={0.72 * intensity} color="#ff6b9d" /> : null}
             </>
           )}
           <CameraParallax enabled={mouseParallax && !reduce && !mobile} baseZ={baseZ} strength={tier === "hero" ? 1 : 0.6} />
@@ -195,9 +198,6 @@ export default function Scene3D({
             <>{children}<FirstFrameReady onReady={markCanvasReady} /></>
           </Suspense>
           {!reduce && composer}
-          <Preload all />
-          <AdaptiveDpr pixelated />
-          <AdaptiveEvents />
         </Canvas>
       </SceneBoundary>
     </div>

@@ -13,9 +13,12 @@ const LOCALE_MAP: Record<Locale, string> = {
 function safeAbsoluteUrl(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   const text = value.trim();
+  const pathname = text.split(/[?#]/, 1)[0].toLowerCase();
+  if (pathname.endsWith("/assets/logo.png")) return `${SITE_URL}/assets/logo.webp`;
   if (text.startsWith("/") && !text.startsWith("//")) return `${SITE_URL}${text}`;
   try {
     const url = new URL(text);
+    if (url.pathname.toLowerCase().endsWith("/assets/logo.png")) return `${SITE_URL}/assets/logo.webp`;
     return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
   } catch {
     return null;
@@ -30,7 +33,7 @@ export function organizationSchema(lang: Locale, settings?: SiteSettings) {
     : [];
 
   const root = (settings || {}) as Record<string, unknown>;
-  const logo = safeAbsoluteUrl(root.logo_url) || `${SITE_URL}/assets/logo.png`;
+  const logo = safeAbsoluteUrl(root.logo_url) || `${SITE_URL}/assets/logo.webp`;
   const image = safeAbsoluteUrl(root.default_seo_image) || `${SITE_URL}/${lang}/opengraph-image`;
   const description = pick(root, "home_desc", lang) || (lang === "ar"
     ? "أركاي للحلول البرمجية: تطوير المنتجات الرقمية ومنصات الويب وتكامل الذكاء الاصطناعي والأنظمة المدمجة وإنترنت الأشياء."

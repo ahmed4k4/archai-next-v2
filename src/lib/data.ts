@@ -197,7 +197,10 @@ async function loadProjectArchive(): Promise<ProjectArchiveData> {
       .select("id,slug,icon,name_en,name_ar,description_en,description_ar,sort_order,active")
       .eq("active", true)
       .order("sort_order"),
-    sb.from("projects").select(ARCHIVE_PROJECTS).eq("status", "published").order("sort_order"),
+    sb.from("projects")
+      .select(ARCHIVE_PROJECTS)
+      .eq("status", "published")
+      .order("sort_order"),
   ]);
 
   let compatibilityMode = false;
@@ -237,16 +240,102 @@ async function loadProjectArchive(): Promise<ProjectArchiveData> {
       categories: category,
       project_technologies: canReadRelations ? arr(row.project_technologies) : [],
       project_industries: canReadRelations ? arr(row.project_industries) : [],
-      // The archive uses a single cover field; gallery images are loaded on project details only.
+      // The media relation is loaded separately below. This prevents a missing optional
+      // `role` column in older deployments from breaking the entire projects query.
       project_images: [],
     } as Project;
   });
+
+  // Load role-based covers independently from project/category joins. Older production
+  // schemas can be missing `role`; that must never break the projects query or silently
+  // force every card to show its decorative placeholder.
+  const projectIds = projects.map((project) => String(project.id)).filter(Boolean);
+  if (projectIds.length) {
+    try {
+      const modernCovers = await sb.from("project_images")
+        .select("project_id,public_url,role,sort_order,alt_en,alt_ar")
+        .in("project_id", projectIds)
+        .in("role", ["cover", "hero", "featured"])
+        .order("sort_order", { ascending: true });
+
+      let coverRows: Record<string, any>[] = [];
+      if (!modernCovers.error) {
+        coverRows = arr<Record<string, any>>(modernCovers.data);
+      } else {
+        // Compatibility path for earlier DB schema versions that only had boolean flags.
+        const legacyCovers = await sb.from("project_images")
+          .select("project_id,public_url,sort_order,alt_en,alt_ar,is_cover,is_hero,is_featured")
+          .in("project_id", projectIds)
+          .or("is_cover.eq.true,is_hero.eq.true,is_featured.eq.true")
+          .order("sort_order", { ascending: true });
+        if (!legacyCovers.error) {
+          coverRows = arr<Record<string, any>>(legacyCovers.data).map((image) => ({
+            ...image,
+            role: image.is_cover ? "cover" : image.is_hero ? "hero" : "featured",
+          }));
+        }
+      }
+
+      const rank = (image: Record<string, any>) => {
+        const role = image.role || (image.is_cover ? "cover" : image.is_hero ? "hero" : image.is_featured ? "featured" : "gallery");
+        return role === "cover" ? 0 : role === "hero" ? 1 : role === "featured" ? 2 : 3;
+      };
+      const byProject = new Map<string, Record<string, any>[]>();
+      for (const image of coverRows) {
+        const key = String(image.project_id);
+        const rows = byProject.get(key) ?? [];
+        rows.push(image);
+        byProject.set(key, rows);
+      }
+      for (const project of projects) {
+        const images = (byProject.get(String(project.id)) ?? []).sort((a, b) =>
+          rank(a) - rank(b) || (a.sort_order ?? 0) - (b.sort_order ?? 0)
+        );
+        if (images.length) project.project_images = [images[0]] as any;
+      }
+
+      // Some older records have only gallery-role images and no scalar cover field.
+      // Query those records alone as a fallback, so galleries are not downloaded for all cards.
+      const missingCover = projects.filter((project) =>
+        !project.project_images?.length &&
+        !(project.cover_thumb || project.cover_image || project.featured_image || project.hero_image)
+      );
+      if (missingCover.length) {
+        const missingIds = missingCover.map((project) => String(project.id));
+        const galleries = await sb.from("project_images")
+          .select("project_id,public_url,role,sort_order,alt_en,alt_ar")
+          .in("project_id", missingIds)
+          .order("sort_order", { ascending: true });
+        let rows: Record<string, any>[] = [];
+        if (!galleries.error) {
+          rows = arr<Record<string, any>>(galleries.data);
+        } else {
+          const legacyGalleries = await sb.from("project_images")
+            .select("project_id,public_url,sort_order,alt_en,alt_ar,is_cover,is_hero,is_featured")
+            .in("project_id", missingIds)
+            .order("sort_order", { ascending: true });
+          if (!legacyGalleries.error) rows = arr<Record<string, any>>(legacyGalleries.data).map((image) => ({
+            ...image,
+            role: image.is_cover ? "cover" : image.is_hero ? "hero" : image.is_featured ? "featured" : "gallery",
+          }));
+        }
+        for (const project of missingCover) {
+          const candidate = rows.filter((image) => String(image.project_id) === String(project.id))
+            .sort((a, b) => rank(a) - rank(b) || (a.sort_order ?? 0) - (b.sort_order ?? 0))[0];
+          if (candidate) project.project_images = [candidate] as any;
+        }
+      }
+    } catch (error) {
+      console.warn("[data] project card media lookup failed:", error instanceof Error ? error.message : error);
+    }
+  }
+
   categoryRows.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
   projects.sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
   return { cats: categoryRows, projects, configured: true, compatibilityMode, dataError: false };
 }
 
-const cachedProjectArchive = unstable_cache(loadProjectArchive, ["project-archive-light-v1"], {
+const cachedProjectArchive = unstable_cache(loadProjectArchive, ["project-archive-cover-v4-independent-media"], {
   revalidate: 300,
   tags: ["content"],
 });

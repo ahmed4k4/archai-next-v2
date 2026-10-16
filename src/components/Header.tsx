@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useTransition, useCallback, type MouseEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,7 +23,12 @@ import {
 import { pick, tr } from "@/lib/i18n";
 import type { Locale, SiteSettings } from "@/lib/types";
 import { resolveSiteNavigation, type SiteNavigationItem } from "@/lib/site-navigation";
-import CommandPalette from "./CommandPalette";
+// Keep the command palette's modal/search animation code out of the first-load bundle.
+// It is fetched only after a user opens search.
+const CommandPalette = dynamic(() => import("./CommandPalette"), {
+  ssr: false,
+  loading: () => null,
+});
 
 type HeaderProps = {
   lang: Locale;
@@ -46,14 +52,17 @@ const ICON_BY_ROUTE: Record<string, LucideIcon> = {
 };
 
 function safeBrandImage(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "/assets/logo.png";
+  if (typeof value !== "string" || !value.trim()) return "/assets/logo.webp";
   const input = value.trim();
+  const pathname = input.split(/[?#]/, 1)[0].toLowerCase();
+  if (pathname.endsWith("/assets/logo.png")) return "/assets/logo.webp";
   if (input.startsWith("/") && !input.startsWith("//")) return input;
   try {
     const parsed = new URL(input);
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.toString() : "/assets/logo.png";
+    if (parsed.pathname.toLowerCase().endsWith("/assets/logo.png")) return "/assets/logo.webp";
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.toString() : "/assets/logo.webp";
   } catch {
-    return "/assets/logo.png";
+    return "/assets/logo.webp";
   }
 }
 
@@ -576,7 +585,7 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
         )}
       </AnimatePresence>
 
-      <CommandPalette lang={lang} cats={cats} open={cmdOpen} onClose={() => setCmdOpen(false)} />
+      {cmdOpen ? <CommandPalette lang={lang} cats={cats} open={cmdOpen} onClose={() => setCmdOpen(false)} /> : null}
     </>
   );
 }

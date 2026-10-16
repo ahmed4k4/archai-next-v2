@@ -55,10 +55,20 @@ function getContactEmail(settings?: SiteSettings): string | null {
 }
 
 function safeLogoUrl(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "/assets/logo.png";
+  if (typeof value !== "string" || !value.trim()) return "/assets/logo.webp";
   const text = value.trim();
+  const pathname = text.split(/[?#]/, 1)[0].toLowerCase();
+  // The dashboard may still store the old 195 KB PNG path; serve the equivalent
+  // optimized asset shipped with this deployment instead.
+  if (pathname.endsWith("/assets/logo.png")) return "/assets/logo.webp";
   if (text.startsWith("/") && !text.startsWith("//")) return text;
-  return safeWebUrl(text) || "/assets/logo.png";
+  const url = safeWebUrl(text);
+  if (url) {
+    try {
+      if (new URL(url).pathname.toLowerCase().endsWith("/assets/logo.png")) return "/assets/logo.webp";
+    } catch {}
+  }
+  return url || "/assets/logo.webp";
 }
 
 export default function Footer({ lang, cats, settings }: FooterProps) {
@@ -247,21 +257,18 @@ export default function Footer({ lang, cats, settings }: FooterProps) {
 
       {/* Marquee strip */}
       <div className="border-t border-violet-500/15 py-4 overflow-hidden">
-        <motion.div
-          className="flex gap-12 whitespace-nowrap"
-          animate={{ x: ar ? ["0%", "50%"] : ["0%", "-50%"] }}
-          transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-        >
-          {Array.from({ length: 20 }).map((_, i) => (
+        <div className={`footer-marquee-track ${ar ? "footer-marquee-rtl" : "footer-marquee-ltr"}`}>
+          {Array.from({ length: 12 }).map((_, i) => (
             <span
               key={i}
-              className="text-[10px] font-mono uppercase tracking-[0.3em] text-ink-4 flex items-center gap-3"
+              aria-hidden={i >= 6 ? true : undefined}
+              className="flex shrink-0 items-center gap-3 text-[10px] font-mono uppercase tracking-[0.3em] text-ink-4"
             >
-              <span className="w-1 h-1 rounded-full bg-violet-400" />
+              <span className="h-1 w-1 rounded-full bg-violet-400" />
               {ar ? "برمجيات · ذكاء اصطناعي · أنظمة مدمجة · إنترنت الأشياء" : "SOFTWARE · AI · EMBEDDED · IOT"}
             </span>
           ))}
-        </motion.div>
+        </div>
       </div>
     </footer>
   );

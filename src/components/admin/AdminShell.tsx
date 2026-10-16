@@ -218,7 +218,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         >
           <div className="admin-brand-row">
             <Link href="/admin" className="admin-brand">
-              <img src="/assets/logo.png" alt="Archai" />
+              <img src="/assets/logo.webp" alt="Archai" />
               <div>
                 <strong>ARCHAI</strong>
                 <span>PROJECTS CONTROL</span>

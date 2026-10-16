@@ -190,6 +190,7 @@ export default function MediaManager({ projectId }: { projectId: string }) {
   const [images, setImages] = useState<MediaImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const hasCover = images.some((image) => image.role === "cover");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -230,7 +231,9 @@ export default function MediaManager({ projectId }: { projectId: string }) {
           public_url: r.publicUrl,
           alt_en: null,
           alt_ar: null,
-          role: images.length === 0 && i === 0 ? "cover" : "gallery",
+          // If an older project only has gallery images, promote the first new upload
+          // to its cover instead of leaving the archive on placeholder artwork.
+          role: !hasCover && i === 0 ? "cover" : "gallery",
           sort_order: images.length + i,
           width: r.width,
           height: r.height,
@@ -249,7 +252,7 @@ export default function MediaManager({ projectId }: { projectId: string }) {
         setSaving(false);
       }
     },
-    [projectId, images.length, sb, load]
+    [projectId, hasCover, images.length, sb, load]
   );
 
   const onDelete = useCallback(

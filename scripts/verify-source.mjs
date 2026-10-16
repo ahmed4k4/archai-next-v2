@@ -54,7 +54,7 @@ function walk(directory) {
   }
 }
 
-for (const jsonFile of ['package.json', 'package-lock.json', 'tsconfig.json', 'next.config.cjs']) {
+for (const jsonFile of ['package.json', 'package-lock.json', 'tsconfig.json', 'next.config.js']) {
   if (!fs.existsSync(path.join(root, jsonFile))) failures.push(`missing required project file ${jsonFile}`);
   else if (jsonFile.endsWith('.json')) {
     try { JSON.parse(fs.readFileSync(path.join(root, jsonFile), 'utf8')); }
@@ -69,6 +69,13 @@ const globalCss = fs.readFileSync(path.join(root, 'src/app/styles/globals.css'),
 if (!sceneFile.includes('status === "ready" ? "true" : "error"') ||
     !globalCss.includes('.scene-canvas[data-scene-ready="true"] canvas { opacity: 1; }')) {
   failures.push('3D readiness state does not match the canvas visibility CSS contract');
+}
+
+const nextConfigSource = fs.readFileSync(path.join(root, 'next.config.js'), 'utf8');
+if (!nextConfigSource.includes('hostname: "btseevpvtxpuvxlmvzkt.supabase.co"') ||
+    !nextConfigSource.includes('pathname: "/storage/v1/object/public/**"') ||
+    fs.existsSync(path.join(root, 'next.config.cjs'))) {
+  failures.push('Next.js config must use the supported next.config.js filename and explicitly allow production Supabase project images');
 }
 
 const cmsFile = fs.readFileSync(path.join(root, 'src/lib/page-content.ts'), 'utf8');
@@ -94,19 +101,25 @@ if (!projectsPage.includes('Promise.all([') || !projectsPage.includes('export co
   failures.push('projects route concurrency/cache optimizations are missing');
 }
 const transitionFile = fs.readFileSync(path.join(root, 'src/components/motion/RouteTransition.tsx'), 'utf8');
-if (!transitionFile.includes('const CLICK_WATCHDOG_MS = 1_350') ||
-    !transitionFile.includes('const ROUTE_WATCHDOG_MS = 2_400') ||
+if (!transitionFile.includes('const CLICK_WATCHDOG_MS = 1_000') ||
+    !transitionFile.includes('const ROUTE_WATCHDOG_MS = 1_700') ||
+    !transitionFile.includes('const MIN_REVEAL_MS = 180') ||
     !transitionFile.includes('initial={false}') ||
     !transitionFile.includes('document.addEventListener("click", onDocumentClick, true)') ||
     !transitionFile.includes('VISIBLE_VISUAL_SELECTOR') ||
-    !transitionFile.includes('rect.top < window.innerHeight + 360') ||
+    transitionFile.includes('preloadVisualChunks') ||
+    !transitionFile.includes('const visualsReadyOrTimedOut = lightweightDevice || visualsReady() || elapsed >= 700') ||
     !transitionFile.includes('value={preloadVisuals}')) {
-  failures.push('click-first route transition / visible-only 3D preparation safeguards are missing');
+  failures.push('performance-bounded click-first transitions / mobile-safe visual readiness safeguards are missing');
 }
 const lazyVisualFile = fs.readFileSync(path.join(root, 'src/components/visuals/LazyVisual.tsx'), 'utf8');
-if (!lazyVisualFile.includes('if (preloadRouteVisuals && !prepared)') ||
-    !lazyVisualFile.includes('hasLayout')) {
-  failures.push('route-transition scene preparation / hidden responsive visual guard is missing');
+if (!lazyVisualFile.includes('const scheduleIfVisibleAndIdle =') ||
+    !lazyVisualFile.includes('window.addEventListener("pointerdown", grantEligibility') ||
+    lazyVisualFile.includes('window.addEventListener("pointermove", grantEligibility') ||
+    !lazyVisualFile.includes('requestIdleCallback') ||
+    !lazyVisualFile.includes('prefersLightweightScenes') ||
+    !lazyVisualFile.includes('<VisualPlaceholder kind={PLACEHOLDER_KIND[name]} />')) {
+  failures.push('idle-only WebGL preparation / device-aware static visual fallback is missing');
 }
 const headerSource = fs.readFileSync(path.join(root, 'src/components/Header.tsx'), 'utf8');
 const stableLinkSource = headerSource.slice(headerSource.indexOf('function StableNavLink('), headerSource.indexOf('export default function Header('));
@@ -130,6 +143,17 @@ if (!projectCardSource.includes('const prefetchDetails = index < 3') ||
     !projectCardSource.includes('prefetch={prefetchDetails}')) {
   failures.push('project details must prefetch the first row and use-intent navigation without flooding mobile connections');
 }
+const dataLayerSource = fs.readFileSync(path.join(root, 'src/lib/data.ts'), 'utf8');
+const i18nSource = fs.readFileSync(path.join(root, 'src/lib/i18n.ts'), 'utf8');
+if (!dataLayerSource.includes('const modernCovers = await sb.from("project_images")') ||
+    !dataLayerSource.includes('is_cover.eq.true,is_hero.eq.true,is_featured.eq.true') ||
+    !dataLayerSource.includes('project.project_images = [images[0]]') ||
+    !dataLayerSource.includes('project-archive-cover-v4-independent-media') ||
+    !i18nSource.includes('export const projectCover = (p: any): string =>') ||
+    !projectCardSource.includes('sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"') ||
+    !fs.existsSync(path.join(root, 'public/assets/logo.webp'))) {
+  failures.push('project media cover resolution / legacy schema compatibility / responsive image loading / optimized logo is missing');
+}
 const genericLoading = fs.readFileSync(path.join(root, 'src/app/[lang]/loading.tsx'), 'utf8');
 if (!genericLoading.includes('aria-busy="true"') || !genericLoading.includes('data-route-loading="true"')) {
   failures.push('locale-level accessible loading skeleton is missing');
@@ -138,8 +162,10 @@ const galaxySource = fs.readFileSync(path.join(root, 'src/components/visuals/Gal
 if (!galaxySource.includes('followUpMeteorAt') ||
     !galaxySource.includes('const maxActiveMeteors = lowPower || width < 520 ? 2 : 3') ||
     !galaxySource.includes('random(900, 1650)') ||
-    !galaxySource.includes('const baseCount = width < 520 ? 430 : width < 1000 ? 820 : 1420')) {
-  failures.push('increased but performance-bounded star density / meteor cadence / paired meteor safeguards are missing');
+    !galaxySource.includes('const baseCount = width < 520 ? 140 : width < 1000 ? 260 : 520') ||
+    !galaxySource.includes('1000 / 20') ||
+    !galaxySource.includes('1000 / 28')) {
+  failures.push('responsive low-cost star density / frame pacing / meteor safeguards are missing');
 }
 const dynamicVisualFile = fs.readFileSync(path.join(root, 'src/components/visuals/DynamicVisual.tsx'), 'utf8');
 if (!dynamicVisualFile.includes('instance.dataset.visualReady = "error"')) {
@@ -220,6 +246,18 @@ if (!seoAuditFile.includes('/admin/projects?edit=') || !fs.readFileSync(path.joi
   failures.push('SEO audit project links should open the relevant project record in the visual editor');
 }
 const marketingComponent = fs.readFileSync(path.join(root, 'src/components/marketing/MarketingPage.tsx'), 'utf8');
+if (!marketingComponent.includes('order-1 min-w-0 lg:order-1') ||
+    !marketingComponent.includes('h-[170px] w-full max-w-[340px]') ||
+    !marketingComponent.includes('text-[clamp(2rem,9vw,3.25rem)]') ||
+    !marketingComponent.includes('hidden justify-between text-[10px] font-mono')) {
+  failures.push('marketing hero needs mobile-first heading order, compact visual, and responsive title sizing');
+}
+if (!galaxySource.includes('lightweightMotion.matches || lowPower') ||
+    !galaxySource.includes('lightweightMotion.addEventListener?.("change", onMotionPreferenceChange)') ||
+    !fs.readFileSync(path.join(root, 'src/app/styles/globals.css'), 'utf8').includes('.galaxy-background::before { animation: none !important; }') ||
+    !fs.readFileSync(path.join(root, 'src/app/globals.css'), 'utf8').includes('backdrop-filter: none !important;')) {
+  failures.push('mobile / low-power background and card-rendering safeguards should avoid continuous compositing work');
+}
 if (!marketingComponent.includes('isProjectsArchiveHref') || !marketingComponent.includes('<Link href={secondaryHref} prefetch={isProjectsArchiveHref(secondaryHref) ? true : undefined} className="btn-ghost">')) {
   failures.push('CMS-managed marketing-page CTAs should use App Router links with archive prefetch');
 }
@@ -293,6 +331,51 @@ for (const requiredRoute of [
   'src/app/[lang]/categories/[slug]/page.tsx',
 ]) {
   if (!fs.existsSync(path.join(root, requiredRoute))) failures.push(`missing critical route file: ${requiredRoute}`);
+}
+
+
+const rootLayoutSource = fs.readFileSync(path.join(root, 'src/app/layout.tsx'), 'utf8');
+const rootStylesSource = fs.readFileSync(path.join(root, 'src/app/styles/globals.css'), 'utf8');
+const smoothMotionSource = fs.readFileSync(path.join(root, 'src/components/motion/SmoothMotion.tsx'), 'utf8');
+if (rootLayoutSource.includes('fonts.googleapis.com/css2') || rootLayoutSource.includes('fonts.gstatic.com')) {
+  failures.push('render-blocking third-party webfont dependency remains in the root document');
+}
+if (!rootStylesSource.includes('"Segoe UI", Tahoma') || !rootStylesSource.includes('Cascadia Code')) {
+  failures.push('system-font fallback stack for network-independent first paint is missing');
+}
+if (!smoothMotionSource.includes('import("lenis")') || !smoothMotionSource.includes('import("gsap")') || !smoothMotionSource.includes('scheduleIdle')) {
+  failures.push('Lenis / GSAP must remain deferred desktop-only enhancements');
+}
+if (!smoothMotionSource.includes('const cancelScheduled = scheduleIdle') ||
+    !smoothMotionSource.includes('cancelScheduled();') ||
+    !smoothMotionSource.includes('window.setTimeout(() => {') ||
+    !smoothMotionSource.includes('}, 850);')) {
+  failures.push('deferred motion enhancements must be cancellable and wait for idle user intent');
+}
+const visualQueueFile = fs.readFileSync(path.join(root, 'src/components/visuals/visual-preparation-queue.ts'), 'utf8');
+if (!lazyVisualFile.includes('window.addEventListener("pointerdown", grantEligibility') ||
+    lazyVisualFile.includes('window.addEventListener("pointermove", grantEligibility') ||
+    !visualQueueFile.includes('function drain()') ||
+    !visualQueueFile.includes('const waiting: VisualRequest[] = []') ||
+    !visualQueueFile.includes('releaseVisualPreparation(next.id)')) {
+  failures.push('WebGL initialization must wait for deliberate input and serialize expensive scene bootstraps');
+}
+if (!globalCss.includes('.footer-marquee-track { animation: none !important; transform: none !important; }') ||
+    !globalCss.includes('footer-marquee-ltr 42s linear infinite')) {
+  failures.push('footer marquee should use CSS-only motion and respect reduced-motion preferences');
+}
+const sceneSource = fs.readFileSync(path.join(root, 'src/components/visuals/Scene3D.tsx'), 'utf8');
+if (!sceneSource.includes('const shouldAnimate = !reduce && inView && (!mobile || tier === "hero")') ||
+    sceneSource.includes('<Preload all />') || sceneSource.includes('<AdaptiveDpr pixelated />') || sceneSource.includes('<AdaptiveEvents />')) {
+  failures.push('mobile WebGL rendering safeguards or unnecessary Canvas helpers regressed');
+}
+const headerPerfSource = fs.readFileSync(path.join(root, 'src/components/Header.tsx'), 'utf8');
+if (!headerPerfSource.includes('dynamic(() => import("./CommandPalette")') || !headerPerfSource.includes('{cmdOpen ? <CommandPalette')) {
+  failures.push('Command Palette must be code-split and loaded only when opened');
+}
+const homeHeroSource = fs.readFileSync(path.join(root, 'src/components/Hero.tsx'), 'utf8');
+if (!homeHeroSource.includes('initial={false}') || homeHeroSource.includes('{...appear(0.16)}')) {
+  failures.push('homepage LCP headline should be visible in server-rendered HTML instead of waiting for entrance motion');
 }
 
 console.log(`Source files parsed: ${parsedFiles}`);

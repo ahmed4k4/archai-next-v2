@@ -48,6 +48,7 @@ export default function GalaxyBackground() {
     if (!canvas || !context) return;
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const lightweightMotion = window.matchMedia("(max-width: 767px), (pointer: coarse)");
     let frameId = 0;
     let width = 1;
     let height = 1;
@@ -136,7 +137,8 @@ export default function GalaxyBackground() {
 
       // Uniform field density with a restrained galactic concentration. Avoid
       // placing most of the stars in the centre of the viewport.
-      const baseCount = width < 520 ? 430 : width < 1000 ? 820 : 1420;
+      // Keep the sky continuous, but cap per-frame CPU work on smaller devices.
+      const baseCount = width < 520 ? 140 : width < 1000 ? 260 : 520;
       const count = lowPower ? Math.round(baseCount * 0.62) : baseCount;
       stars = Array.from({ length: count }, () => {
         const x = Math.random() * width;
@@ -257,8 +259,8 @@ export default function GalaxyBackground() {
 
     const render = (now: number) => {
       frameId = 0;
-      if (disposed || document.hidden || reducedMotion.matches) return;
-      const minimumFrameMs = lowPower || width < 700 ? 1000 / 30 : width < 1100 ? 1000 / 40 : 1000 / 50;
+      if (disposed || document.hidden || reducedMotion.matches || lightweightMotion.matches || lowPower) return;
+      const minimumFrameMs = lowPower || width < 520 ? 1000 / 20 : width < 700 ? 1000 / 24 : width < 1100 ? 1000 / 26 : 1000 / 28;
       if (lastDrawTime && now - lastDrawTime < minimumFrameMs) {
         frameId = window.requestAnimationFrame(render);
         return;
@@ -310,7 +312,7 @@ export default function GalaxyBackground() {
     };
 
     const start = () => {
-      if (disposed || document.hidden || frameId || reducedMotion.matches) return;
+      if (disposed || document.hidden || frameId || reducedMotion.matches || lightweightMotion.matches || lowPower) return;
       lastTime = 0;
       lastDrawTime = 0;
       frameId = window.requestAnimationFrame(render);
@@ -324,7 +326,7 @@ export default function GalaxyBackground() {
     const onVisibilityChange = () => document.hidden ? stop() : start();
     const onMotionPreferenceChange = () => {
       meteors = [];
-      if (reducedMotion.matches) {
+      if (reducedMotion.matches || lightweightMotion.matches || lowPower) {
         stop();
         drawStars(0, true);
       } else {
@@ -337,10 +339,11 @@ export default function GalaxyBackground() {
     });
 
     resize();
-    if (!reducedMotion.matches) start();
+    if (!reducedMotion.matches && !lightweightMotion.matches && !lowPower) start();
     window.addEventListener("resize", resize, { passive: true });
     document.addEventListener("visibilitychange", onVisibilityChange);
     reducedMotion.addEventListener?.("change", onMotionPreferenceChange);
+    lightweightMotion.addEventListener?.("change", onMotionPreferenceChange);
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
     return () => {
@@ -349,6 +352,7 @@ export default function GalaxyBackground() {
       window.removeEventListener("resize", resize);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       reducedMotion.removeEventListener?.("change", onMotionPreferenceChange);
+      lightweightMotion.removeEventListener?.("change", onMotionPreferenceChange);
       themeObserver.disconnect();
     };
   }, []);

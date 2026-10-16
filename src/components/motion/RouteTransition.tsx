@@ -4,15 +4,13 @@ import { motion, useAnimationControls, useReducedMotion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { VisualPreloadContext } from "@/components/visuals/VisualPreloadContext";
-import { preloadVisualChunks } from "@/components/visuals/preloadVisualChunks";
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
-const CLICK_WATCHDOG_MS = 1_350;
-const ROUTE_WATCHDOG_MS = 2_400;
-const MIN_REVEAL_MS = 320;
-const ENTER_MS = 220;
+const CLICK_WATCHDOG_MS = 1_000;
+const ROUTE_WATCHDOG_MS = 1_700;
+const MIN_REVEAL_MS = 180;
+const ENTER_MS = 180;
 const VISIBLE_VISUAL_SELECTOR = ".route-content [data-visual-instance]";
-const LAZY_VISUAL_SELECTOR = ".route-content [data-lazy-visual]";
 
 type VisualReadyDetail = { route?: string; instanceId?: string; status?: "ready" | "error" };
 
@@ -142,7 +140,7 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
 
     if (!transitionActive.current) beginTransition();
     // The click animation is already moving. Once Next confirms the destination, give its
-    // server content, critical images, and visible visual scene a fresh readiness window.
+    // server content and critical images a fresh readiness window; 3D cannot hold the route.
     // The short click watchdog only applies if navigation never starts at all.
     if (watchdog.current !== null) window.clearTimeout(watchdog.current);
     watchdog.current = window.setTimeout(() => finishRef.current(), ROUTE_WATCHDOG_MS);
@@ -152,7 +150,6 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
     let observer: MutationObserver | null = null;
     let revealTimer = 0;
     const imageListeners = new Map<HTMLImageElement, () => void>();
-    const requestedChunks = new Set<string>();
     const root = () => document.querySelector<HTMLElement>(".route-content");
     const hasLayout = (element: HTMLElement) => {
       const rect = element.getBoundingClientRect();
@@ -188,9 +185,19 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
     const visualsReady = () => visibleVisuals().every((visual) =>
       visual.dataset.visualReady === "ready" || visual.dataset.visualReady === "error"
     );
+    const device = navigator as Navigator & { deviceMemory?: number };
+    const lightweightDevice = window.matchMedia("(max-width: 767px), (pointer: coarse)").matches ||
+      (navigator.hardwareConcurrency || 8) <= 4 ||
+      (typeof device.deviceMemory === "number" && device.deviceMemory <= 4);
     const canReveal = () => {
-      if (disposed || !transitionActive.current || performance.now() - transitionStartedAt.current < MIN_REVEAL_MS) return false;
-      return pageReady() && criticalImages().every((image) => image.complete) && visualsReady();
+      if (disposed || !transitionActive.current) return false;
+      const elapsed = performance.now() - transitionStartedAt.current;
+      if (elapsed < MIN_REVEAL_MS || !pageReady()) return false;
+      const imagesReady = criticalImages().every((image) => image.complete);
+      // A CSS placeholder is already visible. WebGL is intentionally optional so route
+      // navigation and rendering can finish without waiting for GPU compilation.
+      const visualsReadyOrTimedOut = lightweightDevice || visualsReady() || elapsed >= 700;
+      return (imagesReady && visualsReadyOrTimedOut) || elapsed >= 1_050;
     };
     const checkReady = () => {
       if (disposed || !transitionActive.current) return;
@@ -216,23 +223,9 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
         image.addEventListener("error", done, { once: true });
       });
 
-      // Fetch chunks only for scenes at/near the viewport; never spin up every below-fold
-      // WebGL scene on mobile just to decorate a page transition.
-      const candidates = Array.from(document.querySelectorAll<HTMLElement>(LAZY_VISUAL_SELECTOR))
-        .filter((element) => {
-          if (!hasLayout(element)) return false;
-          const rect = element.getBoundingClientRect();
-          return rect.bottom > -160 && rect.top < window.innerHeight + 360;
-        })
-        .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-      const names = [...new Set(candidates.map((element) => element.dataset.lazyVisual).filter((name): name is string => Boolean(name)))];
-      const freshNames = names.filter((name) => !requestedChunks.has(name));
-      freshNames.forEach((name) => requestedChunks.add(name));
-      if (freshNames.length) {
-        void preloadVisualChunks(freshNames).catch((error) => {
-          if (process.env.NODE_ENV !== "production") console.debug("[RouteTransition] non-blocking visual preload skipped", error);
-        });
-      }
+      // Deliberately do not fetch WebGL chunks during navigation. The destination has
+      // an immediate CSS placeholder; loading Three.js here would contend with layout,
+      // images, and the navigation animation on slower computers.
       checkReady();
     };
     const onVisualReady = (event: Event) => {

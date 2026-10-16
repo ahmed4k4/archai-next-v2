@@ -84,17 +84,19 @@ export default function Hero({ lang, settings, count, categoryCount = 0, primary
           </motion.p>
 
           <motion.h1
-            {...appear(0.16)}
+            initial={false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18 }}
             className="font-display text-[clamp(2.55rem,5.7vw,5.2rem)] font-medium leading-[1.05] tracking-tight text-ink-0"
           >
             <span className="bg-grad-text-light bg-clip-text text-transparent dark:bg-grad-text">{localizedTitle}</span>
           </motion.h1>
 
-          <motion.p {...appear(0.28)} className="mt-7 max-w-2xl text-base leading-8 text-ink-3 md:text-lg">
+          <motion.p initial={false} animate={{ opacity: 1, y: 0 }} className="mt-7 max-w-2xl text-base leading-8 text-ink-3 md:text-lg">
             {desc}
           </motion.p>
 
-          <motion.div {...appear(0.38)} className="mt-9 flex flex-wrap gap-3">
+          <motion.div initial={false} animate={{ opacity: 1, y: 0 }} className="mt-9 flex flex-wrap gap-3">
             <MagneticButton href={primaryHref || `/${lang}/projects`} className="btn-primary">
               {primaryLabel || T("ctaExplore")}
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -1,57 +1,71 @@
 "use client";
 
-import Lenis from "lenis";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import type Lenis from "lenis";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
-gsap.registerPlugin(ScrollTrigger);
-
 type Props = { children: ReactNode };
+type ScrollTriggerLike = { update: () => void; refresh: () => void };
+type RevertibleContext = { revert: () => void };
+type LenisLike = Pick<Lenis, "destroy" | "resize" | "on" | "off">;
+type IdleWindow = Window & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
+
+/** Run optional motion code only after the page has painted. */
+function scheduleIdle(callback: () => void, timeout = 1_500): () => void {
+  const idleWindow = window as IdleWindow;
+  if (idleWindow.requestIdleCallback) {
+    const id = idleWindow.requestIdleCallback(callback, { timeout });
+    return () => idleWindow.cancelIdleCallback?.(id);
+  }
+  const id = window.setTimeout(callback, timeout);
+  return () => window.clearTimeout(id);
+}
 
 /**
- * Lenis enhances desktop wheel input without replacing browser scrolling on touch
- * devices. ScrollTrigger scenes are rebuilt on route changes so new pages never
- * inherit stale triggers from the previous route.
+ * Native scrolling is the default. Lenis is an optional desktop-only enhancement,
+ * loaded after the user has actually scrolled and the wheel has gone quiet. This keeps
+ * its JS and animation loop out of the cold-load critical path. GSAP is separately
+ * imported only on desktop routes that use data-gsap-parallax.
  */
 export default function SmoothMotion({ children }: Props) {
   const pathname = usePathname();
-  const lenisRef = useRef<Lenis | null>(null);
-  const gsapContextRef = useRef<gsap.Context | null>(null);
+  const lenisRef = useRef<LenisLike | null>(null);
+  const scrollTriggerRef = useRef<ScrollTriggerLike | null>(null);
+  const gsapContextRef = useRef<RevertibleContext | null>(null);
+  const onLenisScroll = () => scrollTriggerRef.current?.update();
 
   useEffect(() => {
     const reducedQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const widthQuery = window.matchMedia("(min-width: 900px)");
     const pointerQuery = window.matchMedia("(pointer: fine)");
-    const updateScrollTriggers = () => ScrollTrigger.update();
+    let disposed = false;
+    let loading = false;
+    let intentTimer: number | null = null;
+
     const clearNativeFallbackClasses = () => {
       document.documentElement.classList.remove("lenis", "lenis-smooth", "lenis-scrolling", "lenis-stopped");
     };
-
     const destroyLenis = () => {
       const active = lenisRef.current;
-      if (!active) {
-        clearNativeFallbackClasses();
-        return;
+      if (active) {
+        active.off("scroll", onLenisScroll);
+        active.destroy();
+        lenisRef.current = null;
       }
-      active.off("scroll", updateScrollTriggers);
-      active.destroy();
-      lenisRef.current = null;
       clearNativeFallbackClasses();
     };
+    const shouldEnable = () => widthQuery.matches && pointerQuery.matches && !reducedQuery.matches;
 
-    const syncLenis = () => {
-      const shouldEnable = widthQuery.matches && pointerQuery.matches && !reducedQuery.matches;
-      if (!shouldEnable) {
-        destroyLenis();
-        return;
-      }
-      if (lenisRef.current) return;
-
-      try {
-        const instance = new Lenis({
+    const loadLenis = () => {
+      if (!shouldEnable() || lenisRef.current || loading || disposed) return;
+      loading = true;
+      void import("lenis").then(({ default: LenisCtor }) => {
+        if (disposed || !shouldEnable()) return;
+        const instance = new LenisCtor({
           autoRaf: true,
           smoothWheel: true,
           syncTouch: false,
@@ -62,38 +76,71 @@ export default function SmoothMotion({ children }: Props) {
           overscroll: true,
           prevent: (node) => node instanceof HTMLElement && node.hasAttribute("data-lenis-prevent"),
         });
-        lenisRef.current = instance;
-        instance.on("scroll", updateScrollTriggers);
-      } catch (error) {
-        console.warn("[SmoothMotion] Lenis unavailable; keeping native scrolling enabled.", error);
+        lenisRef.current = instance as unknown as LenisLike;
+        instance.on("scroll", onLenisScroll);
+      }).catch((error: unknown) => {
+        if (process.env.NODE_ENV !== "production") console.debug("[SmoothMotion] Lenis enhancement skipped", error);
+        clearNativeFallbackClasses();
+      }).finally(() => {
+        loading = false;
+      });
+    };
+
+    const onScrollIntent = () => {
+      if (!shouldEnable() || lenisRef.current || loading) return;
+      if (intentTimer !== null) window.clearTimeout(intentTimer);
+      // Let the native scroll complete first, then progressively enhance later scrolling.
+      intentTimer = window.setTimeout(() => {
+        intentTimer = null;
+        loadLenis();
+      }, 850);
+    };
+    const syncConditions = () => {
+      if (!shouldEnable()) {
+        if (intentTimer !== null) window.clearTimeout(intentTimer);
+        intentTimer = null;
         destroyLenis();
       }
     };
 
-    syncLenis();
-    reducedQuery.addEventListener?.("change", syncLenis);
-    widthQuery.addEventListener?.("change", syncLenis);
-    pointerQuery.addEventListener?.("change", syncLenis);
+    window.addEventListener("scroll", onScrollIntent, { passive: true });
+    reducedQuery.addEventListener?.("change", syncConditions);
+    widthQuery.addEventListener?.("change", syncConditions);
+    pointerQuery.addEventListener?.("change", syncConditions);
 
     return () => {
-      reducedQuery.removeEventListener?.("change", syncLenis);
-      widthQuery.removeEventListener?.("change", syncLenis);
-      pointerQuery.removeEventListener?.("change", syncLenis);
+      disposed = true;
+      if (intentTimer !== null) window.clearTimeout(intentTimer);
+      window.removeEventListener("scroll", onScrollIntent);
+      reducedQuery.removeEventListener?.("change", syncConditions);
+      widthQuery.removeEventListener?.("change", syncConditions);
+      pointerQuery.removeEventListener?.("change", syncConditions);
       gsapContextRef.current?.revert();
       gsapContextRef.current = null;
+      scrollTriggerRef.current = null;
       destroyLenis();
     };
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    const frame = window.requestAnimationFrame(() => {
-      if (cancelled) return;
-      gsapContextRef.current?.revert();
-      gsapContextRef.current = null;
+    const root = document.getElementById("site-content");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const desktopPointer = window.matchMedia("(min-width: 900px) and (pointer: fine)").matches;
+    if (!root || reduce || !desktopPointer || !root.querySelector("[data-gsap-parallax]")) {
+      const frame = window.requestAnimationFrame(() => lenisRef.current?.resize());
+      return () => window.cancelAnimationFrame(frame);
+    }
 
-      const root = document.getElementById("site-content");
-      if (root) {
+    let cancelled = false;
+    const cancelScheduled = scheduleIdle(() => {
+      void Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(([gsapModule, triggerModule]) => {
+        if (cancelled) return;
+        const gsap = gsapModule.gsap;
+        const ScrollTrigger = triggerModule.ScrollTrigger;
+        gsap.registerPlugin(ScrollTrigger);
+        scrollTriggerRef.current = ScrollTrigger;
+
+        gsapContextRef.current?.revert();
         gsapContextRef.current = gsap.context(() => {
           const elements = root.querySelectorAll<HTMLElement>("[data-gsap-parallax]");
           elements.forEach((element) => {
@@ -101,32 +148,32 @@ export default function SmoothMotion({ children }: Props) {
             const distance = Math.min(24, Math.max(0, Number.isFinite(raw) ? raw : 12));
             if (!distance) return;
             const trigger = element.closest<HTMLElement>("[data-gsap-scene]") || element;
-            gsap.fromTo(
-              element,
-              { y: -distance * 0.25 },
-              {
-                y: distance * 0.25,
-                ease: "none",
-                scrollTrigger: {
-                  trigger,
-                  start: "top bottom",
-                  end: "bottom top",
-                  scrub: 0.9,
-                  invalidateOnRefresh: true,
-                },
+            gsap.fromTo(element, { y: -distance * 0.25 }, {
+              y: distance * 0.25,
+              ease: "none",
+              scrollTrigger: {
+                trigger,
+                start: "top bottom",
+                end: "bottom top",
+                scrub: 0.9,
+                invalidateOnRefresh: true,
               },
-            );
+            });
           });
         }, root);
-      }
-
-      lenisRef.current?.resize();
-      ScrollTrigger.refresh();
+        lenisRef.current?.resize();
+        ScrollTrigger.refresh();
+      }).catch((error: unknown) => {
+        if (process.env.NODE_ENV !== "production") console.debug("[SmoothMotion] GSAP enhancement skipped", error);
+      });
     });
 
     return () => {
       cancelled = true;
-      window.cancelAnimationFrame(frame);
+      cancelScheduled();
+      gsapContextRef.current?.revert();
+      gsapContextRef.current = null;
+      scrollTriggerRef.current = null;
     };
   }, [pathname]);
 

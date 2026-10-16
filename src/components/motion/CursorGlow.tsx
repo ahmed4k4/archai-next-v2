@@ -1,51 +1,55 @@
 "use client";
-import { useEffect, useState } from "react";
-import {
-  motion,
-  useMotionValue,
-  useSpring,
-  useReducedMotion,
-} from "framer-motion";
 
-/**
- * CursorGlow — a soft violet/mint halo that trails the pointer.
- *
- * Disabled on touch/coarse pointers and under `prefers-reduced-motion`.
- * Uses two springs so the glow lags slightly behind the cursor for depth.
- */
+import { useEffect, useRef, useState } from "react";
+
+/** Desktop-only pointer halo driven by one requestAnimationFrame, without a motion runtime. */
 export default function CursorGlow() {
-  const reduce = useReducedMotion();
+  const ref = useRef<HTMLDivElement>(null);
   const [enabled, setEnabled] = useState(false);
-  const x = useMotionValue(-200);
-  const y = useMotionValue(-200);
-  const sx = useSpring(x, { stiffness: 220, damping: 30, mass: 0.6 });
-  const sy = useSpring(y, { stiffness: 220, damping: 30, mass: 0.6 });
 
   useEffect(() => {
-    if (reduce) return;
-    const fine = window.matchMedia("(pointer: fine)").matches;
-    if (!fine) return;
-    setEnabled(true);
+    const finePointer = window.matchMedia("(pointer: fine)");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setEnabled(finePointer.matches && !reducedMotion.matches);
+    sync();
+    finePointer.addEventListener?.("change", sync);
+    reducedMotion.addEventListener?.("change", sync);
 
-    const onMove = (e: MouseEvent) => {
-      x.set(e.clientX);
-      y.set(e.clientY);
+    let frame = 0;
+    let x = -220;
+    let y = -220;
+    const onMove = (event: PointerEvent) => {
+      x = event.clientX;
+      y = event.clientY;
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        if (ref.current) {
+          ref.current.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+        }
+      });
     };
-    window.addEventListener("mousemove", onMove, { passive: true });
-    return () => window.removeEventListener("mousemove", onMove);
-  }, [reduce, x, y]);
+    if (finePointer.matches && !reducedMotion.matches) {
+      window.addEventListener("pointermove", onMove, { passive: true });
+    }
+    return () => {
+      finePointer.removeEventListener?.("change", sync);
+      reducedMotion.removeEventListener?.("change", sync);
+      window.removeEventListener("pointermove", onMove);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
 
   if (!enabled) return null;
 
   return (
-    <motion.div
-      aria-hidden
-      className="pointer-events-none fixed top-0 left-0 z-[200] w-[420px] h-[420px] rounded-full -translate-x-1/2 -translate-y-1/2"
+    <div
+      ref={ref}
+      aria-hidden="true"
+      className="pointer-events-none fixed top-0 left-0 z-[200] h-[420px] w-[420px] rounded-full"
       style={{
-        x: sx,
-        y: sy,
-        background:
-          "radial-gradient(circle, rgba(124,92,255,.12) 0%, rgba(76,226,208,.06) 45%, transparent 70%)",
+        transform: "translate3d(-220px, -220px, 0) translate(-50%, -50%)",
+        background: "radial-gradient(circle, rgba(124,92,255,.12) 0%, rgba(76,226,208,.06) 45%, transparent 70%)",
         mixBlendMode: "screen",
       }}
     />

@@ -25,6 +25,7 @@ export default function HeroParticles() {
     let height = 0;
     let frame = 0;
     let rotation = 0;
+    let lastDrawTime = 0;
     let visible = true;
     let running = false;
     let particles: Particle[] = [];
@@ -41,7 +42,7 @@ export default function HeroParticles() {
       // Keep the hero constellation decorative rather than CPU-bound; this
       // renderer performs neighbour checks on the main thread every frame.
       const count =
-        window.innerWidth < 640 ? 96 : window.innerWidth < 1024 ? 168 : 240;
+        window.innerWidth < 640 ? 44 : window.innerWidth < 1024 ? 76 : 112;
 
       particles = Array.from({ length: count }, (_, i) => {
         const y = 1 - (i / (count - 1)) * 2;
@@ -59,11 +60,18 @@ export default function HeroParticles() {
       });
     };
 
-    const draw = () => {
+    const draw = (time: number) => {
       if (!visible || document.hidden) {
         running = false;
         return;
       }
+      // A restrained 30 fps is enough for a decorative constellation and cuts work
+      // on the main thread without affecting content interaction.
+      if (lastDrawTime && time - lastDrawTime < 1000 / 30) {
+        frame = requestAnimationFrame(draw);
+        return;
+      }
+      lastDrawTime = time;
       context.clearRect(0, 0, width, height);
       rotation += 0.0022;
       const compact = width < 640;
@@ -120,6 +128,7 @@ export default function HeroParticles() {
     const start = () => {
       if (running || !visible || document.hidden) return;
       running = true;
+      lastDrawTime = 0;
       frame = requestAnimationFrame(draw);
     };
 
@@ -129,6 +138,8 @@ export default function HeroParticles() {
       else {
         running = false;
         cancelAnimationFrame(frame);
+        frame = 0;
+        lastDrawTime = 0;
       }
     });
 
@@ -136,6 +147,8 @@ export default function HeroParticles() {
       if (document.hidden) {
         running = false;
         cancelAnimationFrame(frame);
+        frame = 0;
+        lastDrawTime = 0;
       } else start();
     };
 

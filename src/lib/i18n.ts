@@ -52,18 +52,44 @@ export const safeUrl = (u?: string | null): string | undefined => {
   }
 };
 
+/** Normalize image fields from either direct project columns or the media relation. */
+function normalizeProjectImage(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const raw = value.trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith("/") && !raw.startsWith("//")) {
+    const supabaseBase = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+    if (supabaseBase && raw.startsWith("/storage/v1/object/public/")) return `${supabaseBase}${raw}`;
+    return raw;
+  }
+  // Older admin entries may contain the Storage path instead of the resolved public URL.
+  const supabaseBase = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+  if (supabaseBase && !raw.includes(":") && !raw.startsWith("\\")) {
+    const path = raw.replace(/^\/+/, "").replace(/^project-media\//, "");
+    return `${supabaseBase}/storage/v1/object/public/project-media/${path.split("/").map(encodeURIComponent).join("/")}`;
+  }
+  return "";
+}
+
 /**
- * Resolve the best display image for a project, regardless of where the
- * artwork lives (dedicated columns OR the project_images relation).
- * Order: thumb → cover → featured → hero → relation (cover role first).
+ * The media manager saves project covers in `project_images`. Prefer the row selected
+ * with role=cover, then hero/featured, before legacy scalar columns.
  */
-export const projectCover = (p: any): string =>
-  p?.cover_thumb ||
-  p?.cover_image ||
-  p?.featured_image ||
-  p?.hero_image ||
-  p?.project_images?.[0]?.public_url ||
-  "";
+export const projectCover = (p: any): string => {
+  const images = Array.isArray(p?.project_images) ? [...p.project_images] : [];
+  const rank = (role?: string) => role === "cover" ? 0 : role === "hero" ? 1 : role === "featured" ? 2 : 3;
+  images.sort((a: any, b: any) => rank(a?.role) - rank(b?.role) || (a?.sort_order ?? 0) - (b?.sort_order ?? 0));
+  for (const image of images) {
+    const source = normalizeProjectImage(image?.public_url || image?.image_url || image?.url || image?.storage_path);
+    if (source) return source;
+  }
+  for (const value of [p?.cover_thumb, p?.cover_image, p?.featured_image, p?.hero_image, p?.image_url, p?.thumbnail]) {
+    const source = normalizeProjectImage(value);
+    if (source) return source;
+  }
+  return "";
+};
 
 /** Ordered image list for galleries — cover/hero first, then by sort_order. */
 export const projectImages = (p: any): { public_url: string; alt_en?: string | null; alt_ar?: string | null }[] => {
