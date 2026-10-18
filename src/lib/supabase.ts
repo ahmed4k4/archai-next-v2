@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 export const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 export const configured = Boolean(SUPABASE_URL && SUPABASE_KEY);
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://archai-website-navy.vercel.app").replace(/\/$/, "");
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://archai-next-v2.vercel.app").replace(/\/$/, "");
 
 /**
  * Bound Supabase REST requests so an unreachable/stalled backend cannot leave the

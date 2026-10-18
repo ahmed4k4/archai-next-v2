@@ -36,14 +36,14 @@ export function organizationSchema(lang: Locale, settings?: SiteSettings) {
   const logo = safeAbsoluteUrl(root.logo_url) || `${SITE_URL}/assets/logo.webp`;
   const image = safeAbsoluteUrl(root.default_seo_image) || `${SITE_URL}/${lang}/opengraph-image`;
   const description = pick(root, "home_desc", lang) || (lang === "ar"
-    ? "أركاي للحلول البرمجية: تطوير المنتجات الرقمية ومنصات الويب وتكامل الذكاء الاصطناعي والأنظمة المدمجة وإنترنت الأشياء."
-    : "Archai Solutions designs and builds digital products, web platforms, AI-powered workflows, and embedded/IoT systems.");
+    ? "أركاي للأنظمة المتكاملة: تطوير المنتجات الرقمية ومنصات الويب وتكامل الذكاء الاصطناعي والأنظمة المدمجة وإنترنت الأشياء."
+    : "Archai Integrated Systems designs and builds digital products, web platforms, AI-powered workflows, and embedded/IoT systems.");
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${SITE_URL}/#organization`,
-    name: settings?.company_name || "Archai Solutions",
-    alternateName: "أركاي للحلول البرمجية",
+    name: settings?.company_name || "Archai Integrated Systems",
+    alternateName: "أركاي للأنظمة المتكاملة",
     url: SITE_URL,
     logo: {
       "@type": "ImageObject",
@@ -75,7 +75,7 @@ export function websiteSchema(lang: Locale, settings?: SiteSettings) {
     "@type": "WebSite",
     "@id": `${SITE_URL}/#website`,
     url: `${SITE_URL}/${lang}`,
-    name: settings?.company_name || "Archai Solutions",
+    name: settings?.company_name || "Archai Integrated Systems",
     inLanguage: LOCALE_MAP[lang],
     publisher: { "@id": `${SITE_URL}/#organization` },
   };

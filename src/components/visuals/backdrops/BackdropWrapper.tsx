@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { useReducedMotion } from "framer-motion";
+import useReducedMotionPreference from "@/hooks/useReducedMotionPreference";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import { PALETTE } from "../scene-system";
 
@@ -11,7 +11,7 @@ export default function BackdropWrapper({
 }: {
   children: React.ReactNode;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionPreference();
   const [mobile, setMobile] = useState(true);
   const [reducedByPreference, setReducedByPreference] = useState(false);
   useEffect(() => {

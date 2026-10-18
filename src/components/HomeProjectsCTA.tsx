@@ -42,11 +42,11 @@ export default function HomeProjectsCTA({ lang, projectCount, categoryCount, con
               {description}
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href={`/${lang}/projects`} prefetch={true} className="btn-primary">
+              <Link href={`/${lang}/projects`} prefetch={false} className="btn-primary">
                 {primary}
                 <span aria-hidden="true">↗</span>
               </Link>
-              <Link href={`/${lang}/case-studies`} className="btn-ghost">
+              <Link href={`/${lang}/case-studies`} prefetch={false} className="btn-ghost">
                 {secondary}
               </Link>
             </div>

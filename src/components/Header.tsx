@@ -3,7 +3,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useTransition, useCallback, type MouseEvent } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import {
   Search,
@@ -52,17 +51,17 @@ const ICON_BY_ROUTE: Record<string, LucideIcon> = {
 };
 
 function safeBrandImage(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "/assets/logo.webp";
+  if (typeof value !== "string" || !value.trim()) return "/assets/logo-64.webp";
   const input = value.trim();
   const pathname = input.split(/[?#]/, 1)[0].toLowerCase();
-  if (pathname.endsWith("/assets/logo.png")) return "/assets/logo.webp";
+  if (pathname.endsWith("/assets/logo.png") || pathname.endsWith("/assets/logo.webp")) return "/assets/logo-64.webp";
   if (input.startsWith("/") && !input.startsWith("//")) return input;
   try {
     const parsed = new URL(input);
-    if (parsed.pathname.toLowerCase().endsWith("/assets/logo.png")) return "/assets/logo.webp";
-    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.toString() : "/assets/logo.webp";
+    if (parsed.pathname.toLowerCase().endsWith("/assets/logo.png") || parsed.pathname.toLowerCase().endsWith("/assets/logo.webp")) return "/assets/logo-64.webp";
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.toString() : "/assets/logo-64.webp";
   } catch {
-    return "/assets/logo.webp";
+    return "/assets/logo-64.webp";
   }
 }
 
@@ -73,9 +72,9 @@ type StableNavLinkProps = {
   onIntent: (href: string) => void;
 };
 
-/** Stable component identity prevents the primary navigation links from remounting
- * whenever Header state changes (scroll, theme, menus). Prefetching on pointer/focus
- * also avoids a cold first click on the projects route in production. */
+/** Stable component identity prevents primary navigation links from remounting.
+ * Automatic viewport prefetch is disabled so hidden/unused routes do not compete with
+ * first paint; intentional pointer or keyboard focus still prefetches the target. */
 function StableNavLink({ href, label, active, onIntent }: StableNavLinkProps) {
   const prefetchRoute = () => onIntent(href);
   const className = `group relative rounded-lg px-3 py-2 text-sm transition-colors hover:bg-violet-500/10 ${
@@ -92,7 +91,7 @@ function StableNavLink({ href, label, active, onIntent }: StableNavLinkProps) {
   // Keep all localized routes on the App Router so transitions start immediately and
   // the destination can be prefetched instead of forcing a slow full-document reload.
   return (
-    <Link href={href} prefetch={true} onMouseEnter={prefetchRoute} onPointerDown={prefetchRoute} onFocus={prefetchRoute}
+    <Link href={href} prefetch={false} onMouseEnter={prefetchRoute} onPointerDown={prefetchRoute} onFocus={prefetchRoute}
       aria-current={active ? "page" : undefined} className={className}>
       {label}
       {indicator}
@@ -214,12 +213,7 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
 
   return (
     <>
-      <motion.header
-        className="fixed top-0 left-0 right-0 z-[100] transition-all duration-300"
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      >
+      <header className="fixed top-0 left-0 right-0 z-[100] transition-all duration-300 site-header-enter">
         <div
           className={`relative ${
             scrolled
@@ -228,32 +222,19 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
           } transition-all duration-300`}
         >
           {/* Hairline glow (violet → mint) */}
-          <motion.div
-            className="absolute bottom-0 left-0 right-0 h-px bg-grad-signal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: scrolled ? 0.9 : 0 }}
-            transition={{ duration: 0.3 }}
-          />
+          <div className={`header-hairline absolute bottom-0 left-0 right-0 h-px bg-grad-signal ${scrolled ? "is-visible" : ""}`} />
 
           <div className="wrap-wide flex items-center h-16 lg:h-20 gap-6">
             {/* Logo */}
             <Link href={`/${lang}`} aria-label="Archai home" className="flex items-center gap-3 shrink-0 group">
-              <motion.div
-                className="relative w-10 h-10 rounded-xl overflow-hidden"
-                whileHover={{ scale: 1.08, rotate: -3 }}
-                transition={{ duration: 0.3 }}
-              >
+              <div className="brand-mark relative w-10 h-10 rounded-xl overflow-hidden">
                 <img
                   src={logoUrl}
                   alt={companyName}
                   className="w-full h-full object-contain"
                 />
-                <motion.div
-                  className="absolute inset-0 bg-grad-primary opacity-0 group-hover:opacity-30 blur-xl"
-                  animate={{ opacity: [0, 0.15, 0] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                />
-              </motion.div>
+                <div className="brand-mark-glow absolute inset-0 bg-grad-primary opacity-0 group-hover:opacity-30 blur-xl" />
+              </div>
               <div className="hidden sm:block">
                 <div className="font-mono text-[11px] font-bold tracking-[0.2em] text-ink-0">
                   {companyName.toLocaleUpperCase(ar ? "ar" : "en")}
@@ -275,29 +256,13 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
                 >
                   <button className="px-3 py-2 text-sm font-medium text-ink-2 hover:text-ink-0 transition-colors flex items-center gap-1.5 rounded-lg hover:bg-violet-500/10">
                     {T("categories")}
-                    <motion.svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      animate={{ rotate: catsOpen ? 180 : 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
+                    <svg className={`header-chevron ${catsOpen ? "is-open" : ""}`} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
                       <path d="M6 9l6 6 6-6" />
-                    </motion.svg>
+                    </svg>
                   </button>
 
-                  <AnimatePresence>
-                    {catsOpen && (
-                      <motion.div
-                        className="absolute top-full left-1/2 -translate-x-1/2 pt-3"
-                        initial={{ opacity: 0, y: -8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8, pointerEvents: "none" }}
-                        transition={{ duration: 0.2 }}
-                      >
+                  {catsOpen && (
+                      <div className="nav-popover-enter absolute top-full left-1/2 -translate-x-1/2 pt-3">
                         <div className="w-[420px] p-3 rounded-2xl bg-[var(--bg-1)] border border-violet-500/20 shadow-[0_24px_64px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
                           <div className="grid grid-cols-2 gap-1.5">
                             {cats.map((c) => (
@@ -320,9 +285,8 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
                             ))}
                           </div>
                         </div>
-                      </motion.div>
+                      </div>
                     )}
-                  </AnimatePresence>
                 </div>
               )}
 
@@ -347,29 +311,13 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
               >
                 <button className="px-3 py-2 text-sm font-medium text-ink-2 hover:text-ink-0 transition-colors flex items-center gap-1.5 rounded-lg hover:bg-violet-500/10">
                   {T("company")}
-                  <motion.svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    animate={{ rotate: companyOpen ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
+                  <svg className={`header-chevron ${companyOpen ? "is-open" : ""}`} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
                     <path d="M6 9l6 6 6-6" />
-                  </motion.svg>
+                  </svg>
                 </button>
 
-                <AnimatePresence>
-                  {companyOpen && (
-                    <motion.div
-                      className="absolute top-full right-0 pt-3"
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8, pointerEvents: "none" }}
-                      transition={{ duration: 0.2 }}
-                    >
+                {companyOpen && (
+                    <div className="nav-popover-enter absolute top-full right-0 pt-3">
                       <div className="w-[300px] p-2 rounded-2xl bg-[var(--bg-1)] border border-violet-500/20 shadow-[0_24px_64px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
                         <div className="grid grid-cols-2 gap-1">
                           {dropdownLinks.map((item) => {
@@ -397,9 +345,8 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
                           })}
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
               </div>}
             </nav>
 
@@ -439,18 +386,9 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
                 aria-label={T("theme")}
                 className="w-9 h-9 grid place-items-center rounded-lg border border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10 text-ink-2 hover:text-ink-0 transition-colors"
               >
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.span
-                    key={theme}
-                    initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
-                    animate={{ rotate: 0, opacity: 1, scale: 1 }}
-                    exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
-                    transition={{ duration: 0.25 }}
-                    className="grid place-items-center"
-                  >
-                    {theme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
-                  </motion.span>
-                </AnimatePresence>
+                <span className="theme-icon-transition grid place-items-center" key={theme}>
+                  {theme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
+                </span>
               </button>
 
               {/* Primary CTA (desktop) */}
@@ -478,49 +416,25 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
                   strokeWidth="2"
                   strokeLinecap="round"
                 >
-                  <motion.path
-                    d="M3 6h18"
-                    animate={{ rotate: mobileOpen ? 45 : 0, y: mobileOpen ? 6 : 0 }}
-                    style={{ originX: "50%", originY: "50%" }}
-                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                  />
-                  <motion.path
-                    d="M3 12h18"
-                    animate={{ opacity: mobileOpen ? 0 : 1 }}
-                    transition={{ duration: 0.25 }}
-                  />
-                  <motion.path
-                    d="M3 18h18"
-                    animate={{ rotate: mobileOpen ? -45 : 0, y: mobileOpen ? -6 : 0 }}
-                    style={{ originX: "50%", originY: "50%" }}
-                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                  />
+                  <path d="M3 6h18" className={`hamburger-line hamburger-line-top ${mobileOpen ? "is-open" : ""}`} />
+                  <path d="M3 12h18" className={`hamburger-line hamburger-line-middle ${mobileOpen ? "is-open" : ""}`} />
+                  <path d="M3 18h18" className={`hamburger-line hamburger-line-bottom ${mobileOpen ? "is-open" : ""}`} />
                 </svg>
               </button>
             </div>
           </div>
         </div>
-      </motion.header>
+      </header>
 
       {/* Mobile drawer */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            className="fixed inset-0 z-[90] lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+      {mobileOpen && (
+          <div className="mobile-menu-overlay fixed inset-0 z-[90] lg:hidden">
             <div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               onClick={() => setMobileOpen(false)}
             />
-            <motion.aside
-              className={`absolute top-16 bottom-0 w-[85%] max-w-[380px] bg-[var(--bg-1)]/95 backdrop-blur-2xl border-violet-500/20 overflow-y-auto ${ar ? "left-0 border-r" : "right-0 border-l"}`}
-              initial={{ x: ar ? "-100%" : "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: ar ? "-100%" : "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+            <aside
+              className={`mobile-menu-panel absolute top-16 bottom-0 w-[85%] max-w-[380px] bg-[var(--bg-1)]/95 backdrop-blur-2xl border-violet-500/20 overflow-y-auto ${ar ? "left-0 border-r" : "right-0 border-l"} ${ar ? "is-ar" : "is-en"}`}
             >
               <div className="h-px bg-grad-signal" />
               <nav className="p-6 space-y-1">
@@ -580,10 +494,9 @@ export default function Header({ lang, cats, settings }: HeaderProps) {
                   <ArrowUpRight size={15} />
                 </Link>
               </nav>
-            </motion.aside>
-          </motion.div>
+            </aside>
+          </div>
         )}
-      </AnimatePresence>
 
       {cmdOpen ? <CommandPalette lang={lang} cats={cats} open={cmdOpen} onClose={() => setCmdOpen(false)} /> : null}
     </>

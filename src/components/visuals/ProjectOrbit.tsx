@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { RoundedBox } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useReducedMotion } from "framer-motion";
+import useReducedMotionPreference from "@/hooks/useReducedMotionPreference";
 import type { Group, Mesh } from "three";
 import Scene3D from "./Scene3D";
 
@@ -137,7 +137,7 @@ function ProjectOrbitSystem({ reducedMotion }: { reducedMotion: boolean }) {
 }
 
 export default function ProjectOrbit({ className }: { className?: string }) {
-  const reducedMotion = Boolean(useReducedMotion());
+  const reducedMotion = Boolean(useReducedMotionPreference());
   return (
     <Scene3D fallbackKind="project" className={className} camera={{ position: [0, 0, 6.3], fov: 42 }} intensity={0.88} tier="hero" mouseParallax>
       <ambientLight intensity={0.56} />

@@ -69,11 +69,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     /* Projects — use only lightweight cover/hero images, not full detail galleries. */
     projects.forEach((p) => {
+      const relationCover = p.project_images?.find((image) =>
+        typeof image.public_url === "string" && image.public_url.trim().length > 0
+      )?.public_url;
       const images = [
         p.cover_image,
         p.featured_image,
         p.hero_image,
-      ].filter(Boolean) as string[];
+        relationCover,
+      ].filter((image): image is string => typeof image === "string" && image.trim().length > 0);
 
       const projectPath = p.slug || p.id;
       urls.push({

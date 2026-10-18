@@ -1,15 +1,10 @@
-"use client";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import type { ReactNode, ComponentType } from "react";
+import type { ReactNode } from "react";
 import type { Locale } from "@/lib/types";
 import type { VisualName } from "../visuals/DynamicVisual";
 import LazyVisual from "../visuals/LazyVisual";
 import Hero3DDisplay from "./Hero3DDisplay";
 import { type PageKey, stripFor, sceneFor } from "../visuals/PageScenes";
-import { Reveal, Stagger, StaggerItem, MagneticButton } from "../motion";
-import { fadeUp, scaleIn, textReveal } from "@/lib/motion";
-import SpotlightPanel from "../motion/SpotlightPanel";
 
 export type MarketingCard = {
   number: string;
@@ -115,89 +110,71 @@ export default function MarketingPage({
         <div className="wrap grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center relative z-10">
           {/* Copy */}
           <div className="order-1 min-w-0 lg:order-1">
-            <motion.span
-              className={`inline-flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.18em] uppercase ${accentClasses.text}`}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+            <span
+              className={`marketing-copy-reveal marketing-reveal-1 inline-flex items-center gap-2 font-mono text-[11px] font-semibold tracking-[0.18em] uppercase ${accentClasses.text}`}
             >
               <span className="w-6 h-px bg-current" />
               {eyebrow}
-            </motion.span>
+            </span>
 
-            <motion.h1
-              className="mt-6 max-w-full break-words font-display text-[clamp(2rem,9vw,3.25rem)] sm:text-5xl md:text-6xl lg:text-7xl font-medium tracking-tight leading-[1.02] text-ink-0"
-              variants={textReveal}
-              initial={false}
-              animate="show"
-              transition={{ duration: 0.22 }}
+            <h1
+              className="marketing-copy-reveal marketing-reveal-2 mt-6 max-w-full break-words font-display text-[clamp(2rem,9vw,3.25rem)] sm:text-5xl md:text-6xl lg:text-7xl font-medium tracking-tight leading-[1.02] text-ink-0"
             >
               {title}
               <br />
               <span className="bg-grad-text-light dark:bg-grad-text bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient-flow">
                 {accent}
               </span>
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              className="mt-6 text-lg leading-relaxed text-ink-3 max-w-2xl"
-              initial={false}
-              animate={{ opacity: 1, y: 0 }}
+            <p
+              className="marketing-copy-reveal marketing-reveal-3 mt-6 text-lg leading-relaxed text-ink-3 max-w-2xl"
             >
               {description}
-            </motion.p>
+            </p>
 
-            <motion.div
-              className="mt-10 flex flex-wrap gap-4"
-              initial={false}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <MagneticButton href={primaryHref} className="btn-primary">
-                {primary}
-                <span className="text-xl">↗</span>
-              </MagneticButton>
+            <div className="marketing-copy-reveal marketing-reveal-4 mt-10 flex flex-wrap gap-4">
+              {primaryHref.startsWith("/") && !primaryHref.startsWith("//") ? (
+                <Link href={primaryHref} prefetch={false} className="btn-primary">
+                  {primary}<span className="text-xl">↗</span>
+                </Link>
+              ) : (
+                <a href={primaryHref} className="btn-primary">
+                  {primary}<span className="text-xl">↗</span>
+                </a>
+              )}
               {secondary && secondaryHref && (
                 <Link href={secondaryHref} prefetch={isProjectsArchiveHref(secondaryHref) ? true : undefined} className="btn-ghost">
                   {secondary}
                   <span className="text-lg">↗</span>
                 </Link>
               )}
-            </motion.div>
+            </div>
 
             {/* Proof strip */}
-            <motion.div
-              className="mt-12 pt-6 border-t border-violet-500/15 flex flex-wrap gap-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.75, duration: 0.6 }}
-            >
+            <div className="marketing-proof-strip mt-12 pt-6 border-t border-violet-500/15 flex flex-wrap gap-6">
               {proofItems.map((item, i) => (
-                <motion.div
+                <div
                   key={item.n}
-                  className="flex items-center gap-2 text-xs text-ink-4 font-mono tracking-wider"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.85 + i * 0.08 }}
+                  className="marketing-proof-item flex items-center gap-2 text-xs text-ink-4 font-mono tracking-wider"
+                  style={{ animationDelay: `${Math.min(i, 5) * 45}ms` }}
                 >
                   <span className="text-mint-400">{item.n}</span>
                   <span className="uppercase">{item.t}</span>
-                </motion.div>
+                </div>
               ))}
-            </motion.div>
+            </div>
           </div>
 
           {/* 3D Scene */}
-          <motion.div
-            className="order-2 lg:order-2 relative h-[170px] w-full max-w-[340px] mx-auto sm:aspect-square sm:h-auto sm:max-w-[440px] lg:max-w-[600px]"
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          <div
+            className="marketing-visual-reveal order-2 lg:order-2 relative h-[170px] w-full max-w-[340px] mx-auto sm:aspect-square sm:h-auto sm:max-w-[440px] lg:max-w-[600px]"
           >
-            <div className="absolute inset-0" data-gsap-parallax="30">
+            <div className="absolute inset-0">
               <LazyVisual name={heroScene} className="absolute inset-0" rootMargin="360px 0px" />
             </div>
             {heroExtra}
-          </motion.div>
+          </div>
         </div>
 
         {/* Bottom index line */}
@@ -210,81 +187,61 @@ export default function MarketingPage({
       {/* ============================================================
           CARDS GRID
           ============================================================ */}
-      <section className="relative py-24 lg:py-32">
+      <section className="marketing-cards-section relative py-20 sm:py-24 lg:py-32">
         <div className="wrap">
-          <Reveal variant={fadeUp}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end mb-16">
+          <div className="marketing-section-reveal">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-end mb-10 md:mb-16">
               <div>
                 <span className="section-kicker">{sectionEyebrow}</span>
                 <h2 className="section-title">
                   {sectionTitle}
                   <br />
-                  <span className="accent">
-                    {sectionAccent}
-                  </span>
+                  <span className="accent">{sectionAccent}</span>
                 </h2>
               </div>
-              <p className="section-desc md:text-right">
-                {sectionDescription}
-              </p>
+              <p className="section-desc md:text-right">{sectionDescription}</p>
             </div>
-          </Reveal>
+          </div>
 
-          <Stagger delay={0.1} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="marketing-card-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {cards.map((card, i) => (
-              <StaggerItem key={card.number}>
-                <SpotlightPanel className="h-full rounded-3xl">
-                <motion.article
+              <div
+                key={card.number}
+                className="marketing-card-item h-full"
+                style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
+              >
+                <article
                   id={kind === "services" ? `service-${(["software-engineering", "business-systems", "artificial-intelligence", "embedded-systems", "mobile-applications", "continuous-improvement"][i] || i + 1)}` : undefined}
-                  className="group relative h-full scroll-mt-28 p-7 rounded-3xl glass overflow-hidden"
-                  whileHover={{ y: -8 }}
-                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  className="marketing-card-shell group relative h-full scroll-mt-28 rounded-3xl glass overflow-hidden p-5 sm:p-7"
                 >
-                  {/* Corner accent */}
                   <div className="absolute top-0 right-0 w-32 h-32 bg-grad-primary opacity-0 group-hover:opacity-20 blur-3xl transition-opacity duration-500 rounded-full pointer-events-none" />
-
-                  {/* Shine sweep on hover */}
-                  <div className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-[1100ms] ease-out bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+                  <div className="marketing-card-shine pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-[900ms] ease-out bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
 
                   <div className="flex items-start justify-between mb-6">
                     <span className="font-mono text-[10px] text-ink-4 tracking-widest">{card.number}</span>
-                    <span className="w-12 h-12 grid place-items-center rounded-2xl bg-violet-500/10 border border-violet-500/30 text-violet-300 text-2xl group-hover:rotate-[15deg] transition-transform duration-500">
+                    <span className="marketing-card-icon w-12 h-12 grid place-items-center rounded-2xl bg-violet-500/10 border border-violet-500/30 text-violet-300 text-2xl">
                       {card.icon}
                     </span>
                   </div>
 
-                  <h3 className="font-display text-2xl font-medium text-ink-0 mb-3">
-                    {card.title}
-                  </h3>
-                  <p className="text-sm leading-relaxed text-ink-3 mb-5">
-                    {card.body}
-                  </p>
+                  <h3 className="font-display text-xl sm:text-2xl font-medium text-ink-0 mb-3">{card.title}</h3>
+                  <p className="text-sm leading-relaxed text-ink-3 mb-5">{card.body}</p>
 
                   {card.tags && card.tags.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {card.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-2.5 py-1 rounded-md text-[10px] font-mono uppercase tracking-wider text-ink-3 border border-violet-500/20 bg-violet-500/5"
-                        >
+                        <span key={tag} className="px-2.5 py-1 rounded-md text-[10px] font-mono uppercase tracking-wider text-ink-3 border border-violet-500/20 bg-violet-500/5">
                           {tag}
                         </span>
                       ))}
                     </div>
                   )}
 
-                  {/* Bottom hairline animation */}
-                  <motion.div
-                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-grad-signal origin-left"
-                    initial={{ scaleX: 0 }}
-                    whileHover={{ scaleX: 1 }}
-                    transition={{ duration: 0.4 }}
-                  />
-                </motion.article>
-                </SpotlightPanel>
-              </StaggerItem>
+                  <div className="marketing-card-hairline absolute bottom-0 left-0 right-0 h-[2px] bg-grad-signal origin-left" />
+                </article>
+              </div>
             ))}
-          </Stagger>
+          </div>
         </div>
       </section>
 
@@ -292,11 +249,11 @@ export default function MarketingPage({
           MID-PAGE 3D VISUAL STRIP — every marketing page gets two more
           distinct animated scenes (fallback keeps them unique per hero).
           ============================================================ */}
-      <section data-gsap-scene className="relative py-20 lg:py-28 hidden md:block">
+      <section className="marketing-visual-strip relative py-20 lg:py-28 hidden md:block">
         <div className="wrap">
-          <Reveal variant={fadeUp}>
+          <div className="marketing-section-reveal">
             <span className="section-kicker">{liveSystemsLabel}</span>
-          </Reveal>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
             {strip.map((v) => (
               <Hero3DDisplay key={v} name={v} />
@@ -313,13 +270,13 @@ export default function MarketingPage({
       {/* ============================================================
           CTA OUTRO
           ============================================================ */}
-      <section className="relative py-32 overflow-hidden">
+      <section className="marketing-outro relative py-32 overflow-hidden">
         <div className="absolute inset-0 opacity-30 pointer-events-none hidden md:block" aria-hidden>
           <LazyVisual name={strip[1]} className="absolute inset-0" rootMargin="180px 0px" />
         </div>
 
         <div className="wrap relative text-center max-w-4xl mx-auto">
-          <Reveal variant={scaleIn}>
+          <div className="marketing-outro-reveal">
             <span className="section-kicker justify-center inline-flex">
               {outroEyebrow}
             </span>
@@ -330,12 +287,17 @@ export default function MarketingPage({
               {outroText}
             </p>
             <div className="mt-10 flex flex-wrap gap-4 justify-center">
-              <MagneticButton href={primaryHref} className="btn-primary">
-                {primary}
-                <span className="text-xl">↗</span>
-              </MagneticButton>
+              {primaryHref.startsWith("/") && !primaryHref.startsWith("//") ? (
+                <Link href={primaryHref} prefetch={false} className="btn-primary">
+                  {primary}<span className="text-xl">↗</span>
+                </Link>
+              ) : (
+                <a href={primaryHref} className="btn-primary">
+                  {primary}<span className="text-xl">↗</span>
+                </a>
+              )}
             </div>
-          </Reveal>
+          </div>
         </div>
       </section>
     </main>

@@ -2,6 +2,6 @@
 
 import { createContext, useContext } from "react";
 
-/** True while the incoming route is covered; LazyVisual uses it to mount every scene before reveal. */
+/** True while the incoming route is covered; desktop scenes are queued and primed before reveal. */
 export const VisualPreloadContext = createContext(false);
 export const useVisualPreload = () => useContext(VisualPreloadContext);

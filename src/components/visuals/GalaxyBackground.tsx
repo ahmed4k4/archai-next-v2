@@ -138,7 +138,7 @@ export default function GalaxyBackground() {
       // Uniform field density with a restrained galactic concentration. Avoid
       // placing most of the stars in the centre of the viewport.
       // Keep the sky continuous, but cap per-frame CPU work on smaller devices.
-      const baseCount = width < 520 ? 140 : width < 1000 ? 260 : 520;
+      const baseCount = width < 520 ? 100 : width < 1000 ? 180 : 320;
       const count = lowPower ? Math.round(baseCount * 0.62) : baseCount;
       stars = Array.from({ length: count }, () => {
         const x = Math.random() * width;
@@ -260,7 +260,7 @@ export default function GalaxyBackground() {
     const render = (now: number) => {
       frameId = 0;
       if (disposed || document.hidden || reducedMotion.matches || lightweightMotion.matches || lowPower) return;
-      const minimumFrameMs = lowPower || width < 520 ? 1000 / 20 : width < 700 ? 1000 / 24 : width < 1100 ? 1000 / 26 : 1000 / 28;
+      const minimumFrameMs = lowPower || width < 520 ? 1000 / 16 : width < 700 ? 1000 / 18 : width < 1100 ? 1000 / 20 : 1000 / 22;
       if (lastDrawTime && now - lastDrawTime < minimumFrameMs) {
         frameId = window.requestAnimationFrame(render);
         return;
@@ -284,7 +284,7 @@ export default function GalaxyBackground() {
       // Occasional staggered pairs make the sky feel alive without turning it into
       // a constant light show. The lower cap and longer cadence on small/low-power
       // screens preserve mobile frame time.
-      const maxActiveMeteors = lowPower || width < 520 ? 2 : 3;
+      const maxActiveMeteors = lowPower || width < 520 ? 1 : 2;
       if (followUpMeteorAt > 0 && now >= followUpMeteorAt && meteors.length < maxActiveMeteors) {
         spawnMeteor();
         followUpMeteorAt = 0;
@@ -295,10 +295,10 @@ export default function GalaxyBackground() {
           followUpMeteorAt = now + random(220, 520);
         }
         const interval = lowPower
-          ? random(2100, 3300)
+          ? random(2800, 4200)
           : width < 700
-            ? random(1250, 2050)
-            : random(900, 1650);
+            ? random(2200, 3400)
+            : random(1700, 2800);
         nextMeteorAt = now + interval;
       }
       meteors = meteors.filter((meteor) => {

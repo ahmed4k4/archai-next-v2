@@ -1,7 +1,7 @@
 "use client";
 import { Canvas, type CanvasProps, useThree, useFrame } from "@react-three/fiber";
 import { Component, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
-import { useReducedMotion } from "framer-motion";
+import useReducedMotionPreference from "@/hooks/useReducedMotionPreference";
 import VisualPlaceholder, { type VisualPlaceholderKind } from "./VisualPlaceholder";
 
 type Props = {
@@ -91,7 +91,7 @@ export default function Scene3D({
   tier = "default",
   fallbackKind = "abstract",
 }: Props) {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionPreference();
   const hostRef = useRef<HTMLDivElement>(null);
   // Start with the safe tier so first hydration on a phone never spins up every canvas.
   const [mobile, setMobile] = useState(true);

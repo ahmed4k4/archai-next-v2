@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import {
   FolderKanban,
   FileText,
@@ -45,52 +44,56 @@ export default function AdminHome() {
 
   useEffect(() => {
     let alive = true;
-    (async () => {
-      const [overview, dash, recent] = await Promise.all([
+    const loadDashboard = async () => {
+      const from = new Date(Date.now() - 14 * 864e5).toISOString();
+      const to = new Date().toISOString();
+      const requests = await Promise.allSettled([
         sb.rpc("admin_overview"),
-        sb.rpc("analytics_dashboard", {
-          p_from: new Date(Date.now() - 14 * 864e5).toISOString(),
-          p_to: new Date().toISOString(),
-          p_bucket: "day",
-        }),
-        sb
-          .from("projects")
+        sb.rpc("analytics_dashboard", { p_from: from, p_to: to, p_bucket: "day" }),
+        sb.from("projects")
           .select("id, title_ar, title_en, status, featured, created_at, cover_image")
           .order("created_at", { ascending: false })
           .limit(5),
       ]);
-
       if (!alive) return;
 
-      if (overview.error || !overview.data) {
-        setNotice(
-          ar
-            ? "تعذر جلب بعض الإحصائيات؛ تحقق من دوال قاعدة البيانات."
-            : "Some statistics could not be loaded. Check the database RPC functions."
-        );
+      const overviewResult = requests[0];
+      if (overviewResult.status === "fulfilled" && !overviewResult.value.error && overviewResult.value.data) {
+        setStats(overviewResult.value.data as Stats);
       } else {
-        setStats(overview.data as Stats);
+        setNotice(ar
+          ? "تعذر جلب بعض الإحصائيات؛ تحقق من دوال قاعدة البيانات وصلاحيات الوصول."
+          : "Some statistics could not be loaded. Check database functions and access policies.");
       }
 
-      if (!dash.error && dash.data?.visitors_series) {
-        setSeries(
-          (dash.data.visitors_series as any[]).map((p) => ({
-            t: new Date(p.t).toLocaleDateString(ar ? "ar" : "en", {
-              month: "short",
-              day: "numeric",
-            }),
-            visitors: Number(p.visitors) || 0,
-            page_views: Number(p.page_views) || 0,
-          }))
-        );
+      const dashResult = requests[1];
+      if (dashResult.status === "fulfilled" && !dashResult.value.error && dashResult.value.data?.visitors_series) {
+        setSeries((dashResult.value.data.visitors_series as any[]).map((point) => ({
+          t: new Date(point.t).toLocaleDateString(ar ? "ar" : "en", { month: "short", day: "numeric" }),
+          visitors: Number(point.visitors) || 0,
+          page_views: Number(point.page_views) || 0,
+        })));
       }
 
-      setRecentProjects(recent.data || []);
+      const recentResult = requests[2];
+      if (recentResult.status === "fulfilled" && !recentResult.value.error) {
+        setRecentProjects(recentResult.value.data || []);
+      } else {
+        setNotice((current) => current || (ar ? "تعذر تحميل أحدث المشروعات." : "Recent projects could not be loaded."));
+      }
       setLoading(false);
-    })();
-    return () => {
-      alive = false;
     };
+
+    void loadDashboard().catch((error: unknown) => {
+      if (!alive) return;
+      setNotice(ar
+        ? "تعذر الاتصال بلوحة البيانات. تحقق من الاتصال وقواعد الصلاحيات ثم أعد المحاولة."
+        : "Could not connect to dashboard data. Check connectivity and access policies, then retry.");
+      if (process.env.NODE_ENV !== "production") console.error("[admin] dashboard request failed", error);
+      setLoading(false);
+    });
+
+    return () => { alive = false; };
   }, [sb, ar]);
 
   // KPI values and supporting labels come from database RPC results only.
@@ -179,13 +182,9 @@ export default function AdminHome() {
           const Icon = card.icon;
           const tone = toneClass[card.tone];
           return (
-            <motion.div
+            <div
               key={card.label}
               className={`group relative overflow-hidden rounded-2xl border bg-[var(--ad-panel)] p-5 transition-colors ${tone.card}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              whileHover={{ y: -3 }}
-              transition={{ delay: i * 0.08, duration: 0.5 }}
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${tone.glow} opacity-50`} />
               <div className="relative">
@@ -202,7 +201,7 @@ export default function AdminHome() {
                 </div>
                 <p className="mt-2 text-[10px] leading-5 text-ink-4">{card.description}</p>
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>
@@ -211,11 +210,8 @@ export default function AdminHome() {
           TRAFFIC CHART
           ============================================================ */}
       {!loading && series.length > 0 && (
-        <motion.div
+        <div
           className="admin-panel"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
         >
           <div className="admin-section-title">
             <div>
@@ -227,7 +223,7 @@ export default function AdminHome() {
             </Link>
           </div>
           <VisitorsArea data={series} />
-        </motion.div>
+        </div>
       )}
 
       {/* ============================================================
@@ -235,11 +231,8 @@ export default function AdminHome() {
           ============================================================ */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
         {/* Quick actions */}
-        <motion.div
+        <div
           className="admin-panel lg:col-span-2"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.6 }}
         >
           <div className="admin-section-title">
             <div>
@@ -283,11 +276,8 @@ export default function AdminHome() {
             ].map((item, i) => {
               const Icon = item.icon;
               return (
-                <motion.div
+                <div
                   key={item.href}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + i * 0.05 }}
                 >
                   <Link
                     href={item.href}
@@ -309,18 +299,15 @@ export default function AdminHome() {
                       className="text-ink-4 group-hover:text-violet-300 transition-colors"
                     />
                   </Link>
-                </motion.div>
+                </div>
               );
             })}
           </div>
-        </motion.div>
+        </div>
 
         {/* Recent projects */}
-        <motion.div
+        <div
           className="admin-panel"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.6 }}
         >
           <div className="admin-section-title">
             <div>
@@ -385,18 +372,15 @@ export default function AdminHome() {
               })
             )}
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* ============================================================
           TIP + OPEN SITE
           ============================================================ */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <motion.div
+        <div
           className="admin-panel lg:col-span-2 flex items-start gap-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
         >
           <span className="w-11 h-11 grid place-items-center rounded-2xl bg-violet-500/15 text-violet-300 text-xl shrink-0">
             ✦
@@ -418,13 +402,10 @@ export default function AdminHome() {
               {t("projects")} <ArrowUpRight size={12} />
             </Link>
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div
+        <div
           className="admin-panel"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.65 }}
         >
           <span className="admin-kicker">QUICK ACCESS</span>
           <h3 className="mt-2">
@@ -443,7 +424,7 @@ export default function AdminHome() {
           >
             {t("openSite")} ↗
           </a>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

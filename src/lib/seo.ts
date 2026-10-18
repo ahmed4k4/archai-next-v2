@@ -25,7 +25,7 @@ export async function pageSeo(
   const settings = await getSiteSettings();
   const settingsRoot = (settings || {}) as Record<string, unknown>;
   const configuredCompany = typeof settingsRoot.company_name === "string" ? settingsRoot.company_name.trim() : "";
-  const brand = configuredCompany || (lang === "ar" ? "أركاي للحلول البرمجية" : "Archai Solutions");
+  const brand = configuredCompany || (lang === "ar" ? "أركاي للأنظمة المتكاملة" : "Archai Integrated Systems");
   const cleanPath = path.replace(/^\/+|\/+$/g, "");
   const urlPath = cleanPath ? `/${cleanPath}` : "";
   const canonical = `${SITE_URL}/${lang}${urlPath}`;

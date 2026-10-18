@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { MotionConfig } from "framer-motion";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ScrollProgress from "@/components/motion/ScrollProgress";
@@ -38,13 +37,13 @@ export async function generateMetadata({
       ? "الحلول البرمجية والذكاء الاصطناعي"
       : "Software, AI & Digital Product Engineering");
   const configuredBrand = typeof settings.company_name === "string" ? settings.company_name.trim() : "";
-  const brand = configuredBrand || (lang === "ar" ? "أركاي للحلول البرمجية" : "Archai Solutions");
+  const brand = configuredBrand || (lang === "ar" ? "أركاي للأنظمة المتكاملة" : "Archai Integrated Systems");
 
   const description =
     pick(settings, "home_desc", lang as Locale) ||
     (lang === "ar"
-      ? "أركاي للحلول البرمجية: نبني المنتجات الرقمية ومنصات الويب وحلول الذكاء الاصطناعي والأنظمة المدمجة وإنترنت الأشياء."
-      : "Archai Solutions designs and builds digital products, web platforms, AI-powered workflows, and embedded/IoT systems.");
+      ? "أركاي للأنظمة المتكاملة: نبني المنتجات الرقمية ومنصات الويب وحلول الذكاء الاصطناعي والأنظمة المدمجة وإنترنت الأشياء."
+      : "Archai Integrated Systems designs and builds digital products, web platforms, AI-powered workflows, and embedded/IoT systems.");
 
   const localizedTitle = `${title} | ${brand}`;
 
@@ -69,7 +68,7 @@ export async function generateMetadata({
           "شركة برمجة مصر",
         ]
       : [
-          "Archai Solutions",
+          "Archai Integrated Systems",
           "software development company",
           "web development",
           "AI integration",
@@ -172,7 +171,6 @@ export default async function RootLayout({
       {/* ============================================================
           Global layers — each page renders its own WebGL Backdrop.
           ============================================================ */}
-      <MotionConfig reducedMotion="user">
       <SmoothMotion>
         <LocaleSync lang={lang} />
         <ScrollProgress />
@@ -184,7 +182,6 @@ export default async function RootLayout({
 
         <Footer lang={lang} cats={withProjects} settings={settings} />
       </SmoothMotion>
-      </MotionConfig>
       </div>
     </>
   );

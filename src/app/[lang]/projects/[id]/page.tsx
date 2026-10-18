@@ -36,8 +36,8 @@ export async function generateMetadata({
   const description =
     pick(p, "summary", lang as any) ||
     (lang === "ar"
-      ? `تفاصيل مشروع ${title} من أعمال Archai Solutions.`
-      : `Project details for ${title}, built by Archai Solutions.`);
+      ? `تفاصيل مشروع ${title} من أعمال Archai Integrated Systems.`
+      : `Project details for ${title}, built by Archai Integrated Systems.`);
 
   const images = [
     p.cover_image,

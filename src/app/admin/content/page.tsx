@@ -222,52 +222,57 @@ export default function PageContentEditor() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError("");
-    const [rowResult, settingsResult] = await Promise.all([
-      sb.from("site_page_content").select("*").eq("page_key", pageKey).eq("locale", contentLocale).maybeSingle(),
-      sb.from("site_settings").select("*").eq("id", 1).maybeSingle(),
-    ]);
+    try {
+      const [rowResult, settingsResult] = await Promise.all([
+        sb.from("site_page_content").select("*").eq("page_key", pageKey).eq("locale", contentLocale).maybeSingle(),
+        sb.from("site_settings").select("*").eq("id", 1).maybeSingle(),
+      ]);
 
-    if (rowResult.error) {
-      setLoadError(rowResult.error.message);
-      toast.error(ar ? "تعذر تحميل سجل المحتوى. تأكد من تطبيق ترحيلة CMS في Supabase." : "Could not load this content row. Confirm the CMS migration has been applied in Supabase.");
-    }
-    if (settingsResult.error) {
-      setLoadError((previous) => previous || settingsResult.error!.message);
-    }
+      if (rowResult.error) {
+        setLoadError(rowResult.error.message);
+        toast.error(ar ? "تعذر تحميل سجل المحتوى. تأكد من تطبيق ترحيلة CMS في Supabase." : "Could not load this content row. Confirm the CMS migration has been applied in Supabase.");
+      }
+      if (settingsResult.error) {
+        setLoadError((previous) => previous || settingsResult.error!.message);
+      }
 
-    const row = rowResult.data as Record<string, any> | null;
-    const settings = settingsResult.data as Record<string, any> | null;
-    const home = pageKey === "home";
-    const localizedTitle = home ? settings?.[`home_title_${contentLocale}`] : row?.title;
-    const localizedDescription = home ? settings?.[`home_desc_${contentLocale}`] : row?.description;
+      const row = rowResult.data as Record<string, any> | null;
+      const settings = settingsResult.data as Record<string, any> | null;
+      const home = pageKey === "home";
+      const localizedTitle = home ? settings?.[`home_title_${contentLocale}`] : row?.title;
+      const localizedDescription = home ? settings?.[`home_desc_${contentLocale}`] : row?.description;
 
-    setForm({
-      eyebrow: row?.eyebrow || "",
-      title: localizedTitle || row?.title || "",
-      accent: row?.accent || "",
-      description: localizedDescription || row?.description || "",
-      primary_label: row?.primary_label || "",
-      primary_href: row?.primary_href || (pageKey === "projects" ? "#project-catalogue" : pageKey === "case-studies" ? `/${contentLocale}/projects` : `/${contentLocale}/contact`),
-      secondary_label: row?.secondary_label || "",
-      secondary_href: row?.secondary_href || "",
-      outro_title: row?.outro_title || "",
-      outro_text: row?.outro_text || "",
-      seo_title: row?.seo_title || "",
-      seo_description: row?.seo_description || localizedDescription || row?.description || "",
-      is_published: row?.is_published !== false,
-    });
-    setCardsJson(JSON.stringify(Array.isArray(row?.cards) ? row.cards : [], null, 2));
-    const loadedSections = row?.sections && typeof row.sections === "object" && !Array.isArray(row.sections)
-      ? { ...row.sections as Record<string, unknown> }
-      : {};
-    // Make the live About highlights editable even on databases where the optional
-    // structured override has not been saved yet; these are the exact localized fallbacks.
-    if (pageKey === "about" && !Array.isArray(loadedSections.aboutStats)) {
-      loadedSections.aboutStats = ABOUT_STATS_DEFAULTS[contentLocale];
+      setForm({
+        eyebrow: row?.eyebrow || "",
+        title: localizedTitle || row?.title || "",
+        accent: row?.accent || "",
+        description: localizedDescription || row?.description || "",
+        primary_label: row?.primary_label || "",
+        primary_href: row?.primary_href || (pageKey === "projects" ? "#project-catalogue" : pageKey === "case-studies" ? `/${contentLocale}/projects` : `/${contentLocale}/contact`),
+        secondary_label: row?.secondary_label || "",
+        secondary_href: row?.secondary_href || "",
+        outro_title: row?.outro_title || "",
+        outro_text: row?.outro_text || "",
+        seo_title: row?.seo_title || "",
+        seo_description: row?.seo_description || localizedDescription || row?.description || "",
+        is_published: row?.is_published !== false,
+      });
+      setCardsJson(JSON.stringify(Array.isArray(row?.cards) ? row.cards : [], null, 2));
+      const loadedSections = row?.sections && typeof row.sections === "object" && !Array.isArray(row.sections)
+        ? { ...row.sections as Record<string, unknown> }
+        : {};
+      if (pageKey === "about" && !Array.isArray(loadedSections.aboutStats)) {
+        loadedSections.aboutStats = ABOUT_STATS_DEFAULTS[contentLocale];
+      }
+      setSectionsJson(JSON.stringify(loadedSections, null, 2));
+      setLastSaved(row?.updated_at || "");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : (ar ? "تعذر تحميل المحتوى." : "Could not load page content.");
+      setLoadError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
-    setSectionsJson(JSON.stringify(loadedSections, null, 2));
-    setLastSaved(row?.updated_at || "");
-    setLoading(false);
   }, [ar, contentLocale, pageKey, sb]);
 
   useEffect(() => { void load(); }, [load]);
@@ -305,8 +310,18 @@ export default function PageContentEditor() {
         const patch = contentLocale === "ar"
           ? { home_title_ar: form.title, home_desc_ar: form.description }
           : { home_title_en: form.title, home_desc_en: form.description };
-        const { error } = await sb.from("site_settings").update(patch).eq("id", 1);
+        const { data: updatedSettings, error } = await sb
+          .from("site_settings")
+          .update(patch)
+          .eq("id", 1)
+          .select("id")
+          .maybeSingle();
         if (error) throw error;
+        if (!updatedSettings) {
+          throw new Error(ar
+            ? "لم يتم تحديث إعدادات الرئيسية. تأكد من وجود سجل site_settings برقم 1 وصلاحيات التعديل."
+            : "Homepage settings were not updated. Check the site_settings row with id 1 and update permissions.");
+        }
       }
 
       const payload = {

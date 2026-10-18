@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -16,12 +16,11 @@ import {
   Sun,
   Moon,
   Languages,
-  Bell,
   ChevronRight,
   PanelLeft,
   type LucideIcon,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig, useReducedMotion } from "framer-motion";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { AdminLocale, AdminLocaleProvider } from "./AdminI18n";
 
@@ -98,6 +97,7 @@ const labels: Record<AdminLocale, Record<string, string>> = {
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const sb = supabaseBrowser();
 
   const [ready, setReady] = useState(false);
@@ -108,6 +108,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [collapsed, setCollapsed] = useState(false);
+  const pathnameRef = useRef(pathname);
+  const validatedUserId = useRef<string | null>(null);
+
+  useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
 
   useEffect(() => {
     try {
@@ -135,26 +139,59 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     let mounted = true;
-    sb.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      if (!data.session) {
-        if (pathname !== "/admin/login") router.replace("/admin/login");
+    const validateInitialSession = async () => {
+      try {
+        const { data, error: sessionError } = await sb.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!mounted) return;
+        if (!data.session) {
+          validatedUserId.current = null;
+          if (pathnameRef.current !== "/admin/login") router.replace("/admin/login");
+          setReady(true);
+          return;
+        }
+
+        if (validatedUserId.current === data.session.user.id) {
+          setEmail(data.session.user.email || "Admin");
+          setReady(true);
+          return;
+        }
+
+        const { data: profile, error: profileError } = await sb.rpc("get_my_profile");
+        if (profileError || profile?.role !== "admin") {
+          await sb.auth.signOut();
+          if (!mounted) return;
+          router.replace("/admin/login?denied=1");
+          setReady(true);
+          return;
+        }
+
+        if (!mounted) return;
+        validatedUserId.current = data.session.user.id;
+        setEmail(data.session.user.email || profile?.name || "Admin");
         setReady(true);
-        return;
+      } catch (error) {
+        if (!mounted) return;
+        if (process.env.NODE_ENV !== "production") console.error("[admin] session validation failed", error);
+        setReady(true);
+        if (pathnameRef.current !== "/admin/login") router.replace("/admin/login?error=auth");
       }
-      const { data: profile, error: profileError } = await sb.rpc(
-        "get_my_profile"
-      );
-      if (profileError || profile?.role !== "admin") {
-        await sb.auth.signOut();
-        router.replace("/admin/login?denied=1");
-        return;
+    };
+
+    void validateInitialSession();
+    const { data: authListener } = sb.auth.onAuthStateChange((event) => {
+      if (!mounted) return;
+      if (event === "SIGNED_OUT") {
+        validatedUserId.current = null;
+        setReady(false);
+        setEmail("");
+        if (pathnameRef.current !== "/admin/login") router.replace("/admin/login");
       }
-      setEmail(data.session.user.email || profile?.name || "Admin");
-      setReady(true);
     });
+
     return () => {
       mounted = false;
+      authListener.subscription.unsubscribe();
     };
   }, [pathname, router, sb]);
 
@@ -165,7 +202,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         setCommandOpen((v) => !v);
         setCommandQuery("");
       }
-      if (event.key === "Escape") setCommandOpen(false);
+      if (event.key === "Escape") {
+        setCommandOpen(false);
+        setOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -187,7 +227,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     } catch {}
   }
 
-  if (pathname === "/admin/login") return <>{children}</>;
+  if (pathname === "/admin/login") return <MotionConfig reducedMotion="user">{children}</MotionConfig>;
 
   if (!ready) {
     return (
@@ -204,6 +244,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   );
 
   return (
+    <MotionConfig reducedMotion="user">
     <AdminLocaleProvider locale={locale}>
       <div
         className={`admin-app admin-${locale}`}
@@ -227,8 +268,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <button
               className="admin-collapse-btn"
               onClick={toggleCollapse}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={collapsed ? "Expand" : "Collapse"}
+              aria-label={locale === "ar" ? (collapsed ? "توسيع القائمة الجانبية" : "طي القائمة الجانبية") : (collapsed ? "Expand sidebar" : "Collapse sidebar")}
+              title={locale === "ar" ? (collapsed ? "توسيع" : "طي") : (collapsed ? "Expand" : "Collapse")}
             >
               <PanelLeft size={14} />
             </button>
@@ -268,7 +309,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <div className="admin-sidebar-foot">
             <span className="admin-online-dot" />
             <span className="admin-foot-text">
-              {locale === "ar" ? "النظام متصل" : "SYSTEM ONLINE"}
+              {locale === "ar" ? "مساحة إدارة المحتوى" : "CONTENT WORKSPACE"}
             </span>
           </div>
 
@@ -297,7 +338,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         {open && (
           <button
             className="admin-overlay"
-            aria-label="close"
+            aria-label={locale === "ar" ? "إغلاق القائمة" : "Close navigation"}
             onClick={() => setOpen(false)}
           />
         )}
@@ -310,7 +351,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <button
               className="admin-menu"
               onClick={() => setOpen((v) => !v)}
-              aria-label="Menu"
+              aria-label={locale === "ar" ? "فتح القائمة" : "Menu"}
             >
               <Menu size={18} />
             </button>
@@ -339,7 +380,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   setCommandOpen(true);
                   setCommandQuery("");
                 }}
-                aria-label="Command menu"
+                aria-label={locale === "ar" ? "فتح قائمة الأوامر" : "Command menu"}
               >
                 <Search size={14} />
                 <span>⌘K</span>
@@ -348,18 +389,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               <button
                 className="admin-tool-button"
                 onClick={() => changeLocale(locale === "ar" ? "en" : "ar")}
-                aria-label="Language"
+                aria-label={locale === "ar" ? "تغيير اللغة" : "Language"}
               >
                 <Languages size={14} />
                 {L.language}
-              </button>
-
-              <button
-                className="admin-tool-button relative"
-                aria-label={locale === "ar" ? "التنبيهات" : "Notifications"}
-              >
-                <Bell size={14} />
-                <span className="admin-notif-dot" />
               </button>
 
               <button
@@ -377,7 +410,17 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </div>
           </header>
 
-          <main className="admin-content">{children}</main>
+          <main className="admin-content">
+            <motion.div
+              className="admin-route-content"
+              key={pathname}
+              initial={reduceMotion ? false : { opacity: 0.97, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.26, ease: [0.2, 0.75, 0.25, 1] }}
+            >
+              {children}
+            </motion.div>
+          </main>
 
           {/* ============================================================
               COMMAND PALETTE
@@ -466,5 +509,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </section>
       </div>
     </AdminLocaleProvider>
+    </MotionConfig>
   );
 }

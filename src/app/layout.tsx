@@ -1,18 +1,16 @@
 import "./styles/globals.css";
-import "./globals.css";
-import "lenis/dist/lenis.css";
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://archai-website-navy.vercel.app"),
-  title: { default: "Archai Solutions | Software, AI & Digital Product Engineering", template: "%s | Archai Solutions" },
-  description: "Archai Solutions designs and builds digital products, web platforms, AI-powered workflows, and embedded/IoT systems.",
-  applicationName: "Archai Solutions",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://archai-next-v2.vercel.app"),
+  title: { default: "Archai Integrated Systems | Software, AI & Digital Product Engineering", template: "%s | Archai Integrated Systems" },
+  description: "Archai Integrated Systems designs and builds digital products, web platforms, AI-powered workflows, and embedded/IoT systems.",
+  applicationName: "Archai Integrated Systems",
   category: "technology",
-  keywords: ["Archai Solutions", "software development company", "web development", "AI integration", "digital product engineering", "embedded systems", "IoT solutions", "تطوير البرمجيات", "تصميم وتطوير المواقع", "حلول الذكاء الاصطناعي", "الأنظمة المدمجة", "إنترنت الأشياء"],
+  keywords: ["Archai Integrated Systems", "Archai Solutions", "software development company", "web development", "AI integration", "digital product engineering", "embedded systems", "IoT solutions", "تطوير البرمجيات", "تصميم وتطوير المواقع", "حلول الذكاء الاصطناعي", "الأنظمة المدمجة", "إنترنت الأشياء"],
   icons: { icon: "/icon.svg" },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } },
-  openGraph: { type: "website", siteName: "Archai Solutions", title: "Archai Solutions | Software, AI & Digital Product Engineering", description: "Digital products, web platforms, AI integrations, embedded systems, and IoT solutions.", images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Archai Solutions" }] },
-  twitter: { card: "summary_large_image", title: "Archai Solutions | Software, AI & Digital Product Engineering", description: "Digital products, web platforms, AI integrations, embedded systems, and IoT solutions.", images: ["/opengraph-image"] },
+  openGraph: { type: "website", siteName: "Archai Integrated Systems", title: "Archai Integrated Systems | Software, AI & Digital Product Engineering", description: "Digital products, web platforms, AI integrations, embedded systems, and IoT solutions.", images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Archai Integrated Systems" }] },
+  twitter: { card: "summary_large_image", title: "Archai Integrated Systems | Software, AI & Digital Product Engineering", description: "Digital products, web platforms, AI integrations, embedded systems, and IoT solutions.", images: ["/opengraph-image"] },
 };
 
 export const viewport = {

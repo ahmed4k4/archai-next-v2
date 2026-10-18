@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useReducedMotion } from "framer-motion";
+import useReducedMotionPreference from "@/hooks/useReducedMotionPreference";
 import {
   AdditiveBlending,
   BackSide,
@@ -171,7 +171,7 @@ function PlanetSystem({ reducedMotion }: { reducedMotion: boolean }) {
 }
 
 export default function HeroCore({ className }: { className?: string }) {
-  const reducedMotion = Boolean(useReducedMotion());
+  const reducedMotion = Boolean(useReducedMotionPreference());
   return (
     <Scene3D
       fallbackKind="planet"

@@ -1,8 +1,4 @@
-"use client";
-import { motion, useReducedMotion } from "framer-motion";
 import type { Locale } from "@/lib/types";
-import { Reveal } from "./motion";
-import { fadeUp } from "@/lib/motion";
 
 /**
  * A motion-led overview of the studio's engineering focus.
@@ -23,7 +19,6 @@ type ClientShowcaseProps = { lang: Locale; content?: Record<string, unknown> | n
 
 export default function ClientShowcase({ lang, content, visible = true }: ClientShowcaseProps) {
   const ar = lang === "ar";
-  const reduce = useReducedMotion();
   const supplied = content && typeof content === "object" ? content : {};
   const labels = Array.isArray(supplied.items) && supplied.items.every((item) => typeof item === "string")
     ? supplied.items as string[] : [...FOCUS_AREAS];
@@ -31,9 +26,9 @@ export default function ClientShowcase({ lang, content, visible = true }: Client
   if (!visible) return null;
 
   return (
-    <section className="relative overflow-hidden py-16" aria-label={ar ? "مجالات أركاي الهندسية" : "Archai engineering focus"}>
+    <section className="home-focus-showcase relative overflow-hidden py-16" aria-label={ar ? "مجالات أركاي الهندسية" : "Archai engineering focus"}>
       <div className="wrap">
-        <Reveal variant={fadeUp}>
+        <div>
           <div className="mb-8 flex items-center gap-3">
             <span className="h-px w-6 bg-mint-400" />
             <span className="section-kicker mb-0">{(ar ? supplied.headingAr : supplied.headingEn) as string || (ar ? "مجالاتنا الهندسية" : "ENGINEERING FOCUS")}</span>
@@ -43,16 +38,13 @@ export default function ClientShowcase({ lang, content, visible = true }: Client
               ? "مجموعة من التخصصات التي ندمجها وفق احتياج كل منتج، وليست قائمة عملاء أو شعارات تجارية."
               : "A practical set of disciplines we combine around each product’s needs—not a list of client brands or endorsements.")}
           </p>
-        </Reveal>
+        </div>
       </div>
 
       <div className="relative" style={{ perspective: "900px" }}>
         <div className="relative overflow-hidden" style={{ transform: "rotateX(8deg)", transformStyle: "preserve-3d" }}>
-          <motion.div
-            className="flex w-max gap-4 md:gap-6"
-            animate={reduce ? undefined : { x: ar ? ["-50%", "0%"] : ["0%", "-50%"] }}
-            transition={{ duration: 48, repeat: Infinity, ease: "linear" }}
-          >
+          <div className={`focus-marquee-track flex w-max gap-4 md:gap-6 ${ar ? "is-rtl" : "is-ltr"}`}>
+
             {items.map((name, i) => (
               <div
                 key={`${name}-${i}`}
@@ -65,7 +57,7 @@ export default function ClientShowcase({ lang, content, visible = true }: Client
                 </span>
               </div>
             ))}
-          </motion.div>
+          </div>
           <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[var(--bg-0)] to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[var(--bg-0)] to-transparent" />
         </div>

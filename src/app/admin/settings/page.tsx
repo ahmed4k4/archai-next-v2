@@ -90,13 +90,13 @@ export default function Settings() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await sb.from("site_settings").select("*").eq("id", 1).maybeSingle();
-    if (error) {
-      toast.error(error.message);
-      setLoading(false);
-      return;
-    }
-    const row = (data || {}) as Record<string, any>;
+    try {
+      const { data, error } = await sb.from("site_settings").select("*").eq("id", 1).maybeSingle();
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      const row = (data || {}) as Record<string, any>;
     setF(row);
     const contact = objectOrEmpty(row.contact);
     const social = objectOrEmpty(row.social);
@@ -118,8 +118,12 @@ export default function Settings() {
       process: true, faq: true, cta: true, projectsCta: true, technology: true, focus: true,
       ...objectOrEmpty(row.section_visibility),
     } as Record<string, boolean>);
-    setLoading(false);
-  }, [sb]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (ar ? "تعذر تحميل إعدادات الموقع." : "Could not load site settings."));
+    } finally {
+      setLoading(false);
+    }
+  }, [ar, sb]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -200,7 +204,8 @@ export default function Settings() {
 
     setSaving(true);
     const toastId = toast.loading(ar ? "جارٍ حفظ إعدادات الموقع…" : "Saving website settings…");
-    const { error } = await sb.from("site_settings").update({
+    try {
+      const { data: savedRow, error } = await sb.from("site_settings").update({
       company_name: String(f.company_name || "").trim() || null,
       brand_tagline_ar: String(f.brand_tagline_ar || "").trim() || null,
       brand_tagline_en: String(f.brand_tagline_en || "").trim() || null,
@@ -225,11 +230,13 @@ export default function Settings() {
       featured_limit: featuredLimit,
       projects_per_category: projectsPerCategory,
       updated_at: new Date().toISOString(),
-    }).eq("id", 1);
+    }).eq("id", 1).select("id").maybeSingle();
 
-    if (error) {
-      toast.error(`${ar ? "تعذر حفظ الإعدادات" : "Could not save settings"}: ${error.message}`, { id: toastId });
-      setSaving(false);
+    if (error || !savedRow) {
+      const reason = error?.message || (ar
+        ? "لم يتم تحديث أي سجل. تأكد من وجود سجل site_settings برقم 1 وأن لديك صلاحية التعديل."
+        : "No settings row was updated. Ensure site_settings has row id 1 and the current user can update it.");
+      toast.error(`${ar ? "تعذر حفظ الإعدادات" : "Could not save settings"}: ${reason}`, { id: toastId });
       return;
     }
 
@@ -244,7 +251,11 @@ export default function Settings() {
     } else {
       toast.success(t("lastUpdated"), { id: toastId });
     }
-    setSaving(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : (ar ? "حدث خطأ أثناء حفظ الإعدادات." : "An error occurred while saving settings."), { id: toastId });
+    } finally {
+      setSaving(false);
+    }
   }
 
   const field = (key: string, label: string, icon?: any, wide = false, textarea = false) => {

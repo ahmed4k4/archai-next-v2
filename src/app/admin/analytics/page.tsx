@@ -18,18 +18,29 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const to = new Date().toISOString();
-    const from = new Date(Date.now() - 30 * 864e5).toISOString();
-    sb.rpc("analytics_dashboard", {
-      p_from: from,
-      p_to: to,
-      p_bucket: "day",
-    }).then(({ data, error }) => {
-      if (error) setError(error.message);
-      else setD(data);
-      setLoading(false);
-    });
-  }, [sb]);
+    let live = true;
+    const load = async () => {
+      const to = new Date().toISOString();
+      const from = new Date(Date.now() - 30 * 864e5).toISOString();
+      try {
+        const { data, error } = await sb.rpc("analytics_dashboard", {
+          p_from: from,
+          p_to: to,
+          p_bucket: "day",
+        });
+        if (!live) return;
+        if (error) setError(error.message);
+        else setD(data);
+      } catch (requestError) {
+        if (!live) return;
+        setError(requestError instanceof Error ? requestError.message : (locale === "ar" ? "تعذر تحميل التحليلات." : "Could not load analytics."));
+      } finally {
+        if (live) setLoading(false);
+      }
+    };
+    void load();
+    return () => { live = false; };
+  }, [sb, locale]);
 
   const metrics = [
     [t("pageViews"), d?.totals?.page_views, "◉"],

@@ -18,12 +18,12 @@ export async function generateMetadata({ params }: { params: { lang: string } })
     ? "تطوير البرمجيات والذكاء الاصطناعي والمنتجات الرقمية"
     : "Software, AI & Digital Product Engineering");
   const description = cmsHome?.seo_description || pick(settings, "home_desc", lang) || (lang === "ar"
-    ? "أركاي للحلول البرمجية: نبني المنتجات الرقمية ومنصات الويب وحلول الذكاء الاصطناعي والأنظمة المدمجة وإنترنت الأشياء."
-    : "Archai Solutions designs and builds digital products, web platforms, AI-powered workflows, and embedded and IoT systems.");
+    ? "أركاي للأنظمة المتكاملة: نبني المنتجات الرقمية ومنصات الويب وحلول الذكاء الاصطناعي والأنظمة المدمجة وإنترنت الأشياء."
+    : "Archai Integrated Systems designs and builds digital products, web platforms, AI-powered workflows, and embedded and IoT systems.");
   return pageSeo(lang, "", title, description, {
     keywords: lang === "ar"
-      ? ["أركاي للحلول البرمجية", "شركة برمجة", "تطوير مواقع وتطبيقات", "الذكاء الاصطناعي", "أنظمة ERP", "إنترنت الأشياء", "أنظمة مدمجة"]
-      : ["Archai Solutions", "software development company", "web development", "AI integration", "ERP systems", "embedded systems", "IoT solutions"],
+      ? ["أركاي للأنظمة المتكاملة", "شركة برمجة", "تطوير مواقع وتطبيقات", "الذكاء الاصطناعي", "أنظمة ERP", "إنترنت الأشياء", "أنظمة مدمجة"]
+      : ["Archai Integrated Systems", "Archai Solutions", "software development company", "web development", "AI integration", "ERP systems", "embedded systems", "IoT solutions"],
   });
 }
 

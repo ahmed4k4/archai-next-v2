@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import { motion, useMotionValue, useSpring } from "framer-motion";
 import type { ReactNode, MouseEvent } from "react";
 import { useRef } from "react";
 
@@ -12,54 +11,38 @@ type Props = {
   onClick?: () => void;
 };
 
+/** Tiny pointer-only CTA enhancement. Native transforms keep it outside animation-library bundles. */
 export default function MagneticButton({
   children,
   className,
-  strength = 0.35,
+  strength = 0.24,
   href,
   onClick,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const sx = useSpring(x, { stiffness: 200, damping: 20 });
-  const sy = useSpring(y, { stiffness: 200, damping: 20 });
-
-  function onMove(e: MouseEvent<HTMLDivElement>) {
+  function onMove(event: MouseEvent<HTMLDivElement>) {
     if (window.matchMedia?.("(pointer: coarse)").matches || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    x.set((e.clientX - rect.left - rect.width / 2) * strength);
-    y.set((e.clientY - rect.top - rect.height / 2) * strength);
+    const element = ref.current;
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
+    const x = (event.clientX - rect.left - rect.width / 2) * strength;
+    const y = (event.clientY - rect.top - rect.height / 2) * strength;
+    element.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
   }
   function onLeave() {
-    x.set(0);
-    y.set(0);
+    if (ref.current) ref.current.style.transform = "translate3d(0, 0, 0)";
   }
 
   const internalRoute = Boolean(href && href.startsWith("/") && !href.startsWith("//"));
   return (
-    <motion.div
-      ref={ref}
-      onMouseMove={onMove}
-      onMouseLeave={onLeave}
-      style={{ x: sx, y: sy }}
-      className="inline-block"
-    >
+    <div ref={ref} onMouseMove={onMove} onMouseLeave={onLeave} className="inline-block magnetic-cta-wrap">
       {href && internalRoute ? (
-        <Link href={href} prefetch={true} onClick={onClick} className={className}>
-          {children}
-        </Link>
+        <Link href={href} prefetch={false} onClick={onClick} className={className}>{children}</Link>
       ) : href ? (
-        <motion.a href={href} onClick={onClick} className={className}>
-          {children}
-        </motion.a>
+        <a href={href} onClick={onClick} className={className}>{children}</a>
       ) : (
-        <motion.button type="button" onClick={onClick} className={className}>
-          {children}
-        </motion.button>
+        <button type="button" onClick={onClick} className={className}>{children}</button>
       )}
-    </motion.div>
+    </div>
   );
 }

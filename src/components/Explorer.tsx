@@ -1,7 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import ProjectCard from "./ProjectCard";
 import { pick, tr } from "@/lib/i18n";
@@ -78,14 +77,11 @@ export default function Explorer({
   return (
     <>
       {/* Filter bar */}
-      <motion.div
-        className="sticky top-20 z-30 mb-8 p-3 sm:p-4 rounded-2xl glass flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: [0.2, 0.75, 0.25, 1] }}
+      <div
+        className="explorer-filterbar sticky top-20 z-30 mb-8 p-3 sm:p-4 rounded-2xl glass flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-center"
         id="list"
       >
-        <label className="w-full min-w-0 sm:flex-1 sm:min-w-[200px] flex items-center gap-2 px-3 py-3 sm:py-2 rounded-xl bg-white/[0.03] border border-violet-500/20 focus-within:border-violet-500/50 transition-colors">
+        <label className="explorer-search w-full min-w-0 sm:flex-1 sm:min-w-[200px] flex items-center gap-2 px-3 py-3 sm:py-2 rounded-xl">
           <Search size={16} className="text-ink-4 shrink-0" />
           <input
             type="search"
@@ -93,7 +89,7 @@ export default function Explorer({
             onChange={(e) => setQ(e.target.value)}
             placeholder={T("search")}
             aria-label={T("search")}
-            className="flex-1 bg-transparent border-0 outline-0 text-ink-0 placeholder:text-ink-4 text-sm"
+            className="explorer-search-input flex-1 min-w-0 bg-transparent border-0 outline-0 text-ink-0 placeholder:text-ink-4 text-sm"
           />
         </label>
 
@@ -102,7 +98,7 @@ export default function Explorer({
             value={cf}
             onChange={(e) => setCf(e.target.value)}
             aria-label={T("cat")}
-            className="w-full sm:w-auto min-w-0 max-w-full px-3 py-3 sm:py-2 rounded-xl bg-white/[0.03] border border-violet-500/20 text-ink-1 text-sm focus:border-violet-500/50 outline-none"
+            className="explorer-select w-full sm:w-auto min-w-0 max-w-full px-3 py-3 sm:py-2 rounded-xl text-ink-1 text-sm outline-none"
           >
             <option value="">{T("all")}</option>
             {safeCategories.map((c) => (
@@ -117,7 +113,7 @@ export default function Explorer({
           value={tf}
           onChange={(e) => setTf(e.target.value)}
           aria-label={T("allT")}
-          className="w-full sm:w-auto min-w-0 max-w-full px-3 py-3 sm:py-2 rounded-xl bg-white/[0.03] border border-violet-500/20 text-ink-1 text-sm focus:border-violet-500/50 outline-none"
+          className="explorer-select w-full sm:w-auto min-w-0 max-w-full px-3 py-3 sm:py-2 rounded-xl text-ink-1 text-sm outline-none"
         >
           <option value="">{T("allT")}</option>
           {techs.map((x) => (
@@ -132,16 +128,16 @@ export default function Explorer({
               setCf("");
               setTf("");
             }}
-            className="min-h-11 px-3 py-2 rounded-xl text-xs text-ink-3 hover:text-ink-0 border border-violet-500/20 hover:border-violet-500/50 transition-colors"
+            className="explorer-clear min-h-11 px-3 py-2 rounded-xl text-xs transition-colors"
           >
             {ar ? "مسح" : "Clear"} ×
           </button>
         )}
 
-        <span className="self-end sm:self-auto text-[10px] font-mono text-ink-4 sm:ml-auto">
+        <span aria-live="polite" className="self-end sm:self-auto text-[10px] font-mono text-ink-4 sm:ml-auto">
           {list.length} / {safeProjects.length}
         </span>
-      </motion.div>
+      </div>
 
       {/* Grid */}
       {!list.length ? (
@@ -158,12 +154,7 @@ export default function Explorer({
             const shown = filtering ? all : all.slice(0, limit);
             return (
               <div key={c.id} className="mb-16">
-                <motion.h2
-                  className="flex items-baseline justify-between gap-4 mb-6 flex-wrap"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.38, ease: [0.2, 0.75, 0.25, 1] }}
-                >
+                <h2 className="explorer-category-heading flex items-baseline justify-between gap-4 mb-6 flex-wrap">
                   <Link
                     href={`/${lang}/categories/${c.slug}`}
                     prefetch={true}
@@ -183,7 +174,7 @@ export default function Explorer({
                   >
                     {T("viewAll")} ({all.length}) ↗
                   </Link>
-                </motion.h2>
+                </h2>
                 {grid(shown)}
               </div>
             );

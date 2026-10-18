@@ -1,6 +1,3 @@
-"use client";
-
-import { motion, useReducedMotion } from "framer-motion";
 import type { Locale } from "@/lib/types";
 
 /** Animated capability highlights; intentionally avoids unverified success metrics. */
@@ -47,7 +44,6 @@ type AboutHighlight = {
 
 export default function AboutStats({ lang, items }: { lang: Locale; items?: unknown }) {
   const ar = lang === "ar";
-  const reduce = useReducedMotion();
   const supplied = Array.isArray(items)
     ? (items as AboutHighlight[]).filter((item) => item && typeof item === "object" && (
         typeof item.title === "string" || typeof item.titleAr === "string" || typeof item.titleEn === "string"
@@ -74,14 +70,10 @@ export default function AboutStats({ lang, items }: { lang: Locale; items?: unkn
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {highlights.map((item, i) => (
-          <motion.article
+          <article
             key={item.index}
-            className="relative h-full min-h-56 p-6 rounded-3xl glass overflow-hidden"
-            initial={reduce ? { opacity: 1, rotateX: 0, y: 0 } : { opacity: 0, rotateX: 22, y: 24 }}
-            whileInView={reduce ? undefined : { opacity: 1, rotateX: 0, y: 0 }}
-            viewport={{ once: true, amount: 0.25 }}
-            transition={{ duration: 0.65, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-            style={{ transformPerspective: 900 }}
+            className="about-highlight-card relative h-full min-h-56 p-6 rounded-3xl glass overflow-hidden"
+            style={{ animationDelay: `${Math.min(i, 7) * 60}ms` }}
           >
             <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-grad-primary opacity-10 blur-2xl" />
             <div className="relative flex items-center justify-between gap-3 mb-8">
@@ -94,7 +86,7 @@ export default function AboutStats({ lang, items }: { lang: Locale; items?: unkn
             <p className="relative text-sm leading-relaxed text-ink-3">
               {item.body}
             </p>
-          </motion.article>
+          </article>
         ))}
       </div>
     </section>

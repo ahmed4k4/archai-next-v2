@@ -1,10 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { pick, tr, safeUrl, projectCover } from "@/lib/i18n";
 import type { Locale } from "@/lib/types";
-import { viewportOnce } from "@/lib/motion";
 
 type SliderProps = {
   items: any[];
@@ -50,14 +48,10 @@ export default function Slider({ items, lang, label, id }: SliderProps) {
   if (!n) return null;
 
   return (
-    <motion.section
+    <section
       id={id}
-      className="relative rounded-4xl overflow-hidden glass mt-8"
+      className="featured-slider-enter relative rounded-4xl overflow-hidden glass mt-8"
       aria-label={label}
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={viewportOnce}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       onMouseEnter={() => (hold.current = true)}
       onMouseLeave={() => (hold.current = false)}
       onTouchStart={() => (hold.current = true)}
@@ -78,17 +72,17 @@ export default function Slider({ items, lang, label, id }: SliderProps) {
               className="flex-[0_0_100%] snap-start relative min-h-[520px] flex items-end bg-void-800 overflow-hidden"
             >
               {src && (
-                <motion.img
+                <img
                   src={src}
                   alt={title}
                   loading={j === 0 ? "eager" : "lazy"}
                   decoding="async"
+                  fetchPriority={j === 0 ? "high" : "low"}
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";
                   }}
-                  className="absolute inset-0 w-full h-full object-cover"
-                  animate={{ scale: j === i ? 1.06 : 1 }}
-                  transition={{ duration: 8, ease: "linear" }}
+                  className="featured-slider-image absolute inset-0 w-full h-full object-cover"
+                  style={{ transform: j === i ? "scale(1.06)" : "scale(1)" }}
                 />
               )}
 
@@ -99,42 +93,19 @@ export default function Slider({ items, lang, label, id }: SliderProps) {
               <div className="absolute top-6 left-6 w-24 h-24 border-t-2 border-l-2 border-mint-400/40 rounded-tl-3xl" />
 
               <div className="relative z-10 p-8 lg:p-14 max-w-3xl">
-                <motion.span
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-500/40 text-amber-300 text-[10px] font-mono uppercase tracking-widest"
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={viewportOnce}
-                >
+                <span className="featured-slider-copy featured-slider-copy-1 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 backdrop-blur-md border border-amber-500/40 text-amber-300 text-[10px] font-mono uppercase tracking-widest">
                   ★ {T("feat")}
-                </motion.span>
+                </span>
 
-                <motion.h3
-                  className="mt-4 font-display text-3xl lg:text-5xl font-medium text-white leading-tight"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={viewportOnce}
-                  transition={{ delay: 0.15 }}
-                >
+                <h3 className="featured-slider-copy featured-slider-copy-2 mt-4 font-display text-3xl lg:text-5xl font-medium text-white leading-tight">
                   {title}
-                </motion.h3>
+                </h3>
 
-                <motion.p
-                  className="mt-4 text-white/85 text-base lg:text-lg leading-relaxed max-w-xl"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={viewportOnce}
-                  transition={{ delay: 0.25 }}
-                >
+                <p className="featured-slider-copy featured-slider-copy-3 mt-4 text-white/85 text-base lg:text-lg leading-relaxed max-w-xl">
                   {pick(x, "summary", lang)}
-                </motion.p>
+                </p>
 
-                <motion.div
-                  className="mt-7 flex flex-wrap gap-3"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={viewportOnce}
-                  transition={{ delay: 0.35 }}
-                >
+                <div className="featured-slider-copy featured-slider-copy-4 mt-7 flex flex-wrap gap-3">
                   {liveUrl && (
                     <a
                       className="btn-primary"
@@ -152,7 +123,7 @@ export default function Slider({ items, lang, label, id }: SliderProps) {
                   >
                     {T("details")}
                   </Link>
-                </motion.div>
+                </div>
               </div>
             </article>
           );
@@ -196,6 +167,6 @@ export default function Slider({ items, lang, label, id }: SliderProps) {
           </div>
         </>
       )}
-    </motion.section>
+    </section>
   );
 }

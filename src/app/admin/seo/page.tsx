@@ -38,30 +38,52 @@ export default function SeoAuditPage() {
 
   useEffect(() => {
     let live = true;
-    (async () => {
-      const [projectResult, pageResult, settingsResult] = await Promise.all([
-        sb.from("projects").select("id,slug,status,title_en,title_ar,summary_en,summary_ar,cover_image,featured_image,hero_image"),
-        sb.from("site_page_content").select("page_key,locale,title,description,seo_title,seo_description,is_published,updated_at"),
-        sb.from("site_settings").select("home_title_ar,home_title_en,home_desc_ar,home_desc_en").eq("id", 1).maybeSingle(),
-      ]);
-      if (!live) return;
-      const errors = [projectResult.error, pageResult.error, settingsResult.error].filter(Boolean);
-      setError(errors.map((item) => item?.message).filter(Boolean).join(" · "));
-      const settings = (settingsResult.data || {}) as Row;
-      const projectRows = (projectResult.data || []).map((row) => ({ ...row, audit_kind: "project" }));
-      const pageRows = (pageResult.data || []).map((row) => ({
-        ...row,
-        audit_kind: "page",
-        home_title_ar: settings.home_title_ar,
-        home_title_en: settings.home_title_en,
-        home_desc_ar: settings.home_desc_ar,
-        home_desc_en: settings.home_desc_en,
-      }));
-      setRows([...pageRows, ...projectRows]);
-      setLoading(false);
-    })();
+    const load = async () => {
+      try {
+        const [projectResult, pageResult, settingsResult, mediaModern] = await Promise.all([
+          sb.from("projects").select("id,slug,status,title_en,title_ar,summary_en,summary_ar,cover_image,featured_image,hero_image"),
+          sb.from("site_page_content").select("page_key,locale,title,description,seo_title,seo_description,is_published,updated_at"),
+          sb.from("site_settings").select("home_title_ar,home_title_en,home_desc_ar,home_desc_en").eq("id", 1).maybeSingle(),
+          sb.from("project_images").select("project_id,public_url,role,is_cover,is_hero,is_featured"),
+        ]);
+        if (!live) return;
+        const errors = [projectResult.error, pageResult.error, settingsResult.error].filter(Boolean);
+        setError(errors.map((item) => item?.message).filter(Boolean).join(" · "));
+        const settings = (settingsResult.data || {}) as Row;
+        let mediaRows: Row[] = mediaModern.error ? [] : ((mediaModern.data || []) as Row[]);
+        if (mediaModern.error) {
+          const mediaLegacy = await sb.from("project_images").select("project_id,public_url,is_cover,is_hero,is_featured");
+          if (!live) return;
+          if (!mediaLegacy.error) mediaRows = (mediaLegacy.data || []).map((image: any) => ({ ...image, role: null }));
+          else setError((current) => current || mediaLegacy.error!.message);
+        }
+        const mediaProjectIds = new Set(mediaRows
+          .filter((image: any) => typeof image.public_url === "string" && image.public_url.trim())
+          .map((image: any) => String(image.project_id)));
+        const projectRows = (projectResult.data || []).map((row) => ({
+          ...row,
+          audit_kind: "project",
+          has_linked_image: mediaProjectIds.has(String(row.id)),
+        }));
+        const pageRows = (pageResult.data || []).map((row) => ({
+          ...row,
+          audit_kind: "page",
+          home_title_ar: settings.home_title_ar,
+          home_title_en: settings.home_title_en,
+          home_desc_ar: settings.home_desc_ar,
+          home_desc_en: settings.home_desc_en,
+        }));
+        setRows([...pageRows, ...projectRows]);
+      } catch (error) {
+        if (!live) return;
+        setError(error instanceof Error ? error.message : (ar ? "تعذر تحميل بيانات فحص SEO." : "Could not load SEO audit data."));
+      } finally {
+        if (live) setLoading(false);
+      }
+    };
+    void load();
     return () => { live = false; };
-  }, [sb]);
+  }, [sb, ar]);
 
   const audits = useMemo<Audit[]>(() => rows.map((r, i) => {
     const isPage = r.audit_kind === "page";
@@ -103,7 +125,7 @@ export default function SeoAuditPage() {
     const titleAr = first(r, ["title_ar", "name_ar"]);
     const descEn = first(r, ["summary_en", "description_en", "short_description_en"]);
     const descAr = first(r, ["summary_ar", "description_ar"]);
-    const image = first(r, ["cover_image", "image_url", "thumbnail", "hero_image"]);
+    const image = first(r, ["cover_image", "featured_image", "hero_image", "image_url", "thumbnail"]) || (r.has_linked_image ? "linked project image" : "");
     if (!titleEn) issues.push(ar ? "عنوان إنجليزي ناقص" : "Missing EN title");
     if (!titleAr) issues.push(ar ? "عنوان عربي ناقص" : "Missing AR title");
     if (!descEn) issues.push(ar ? "وصف إنجليزي ناقص" : "Missing EN summary");

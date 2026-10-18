@@ -1,9 +1,6 @@
-"use client";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { pick, tr } from "@/lib/i18n";
 import type { Locale, SiteSettings } from "@/lib/types";
-import { viewportOnce } from "@/lib/motion";
 import { resolveSiteNavigation } from "@/lib/site-navigation";
 
 type FooterProps = { lang: Locale; cats: any[]; settings?: SiteSettings };
@@ -55,20 +52,20 @@ function getContactEmail(settings?: SiteSettings): string | null {
 }
 
 function safeLogoUrl(value: unknown): string {
-  if (typeof value !== "string" || !value.trim()) return "/assets/logo.webp";
+  if (typeof value !== "string" || !value.trim()) return "/assets/logo-64.webp";
   const text = value.trim();
   const pathname = text.split(/[?#]/, 1)[0].toLowerCase();
   // The dashboard may still store the old 195 KB PNG path; serve the equivalent
   // optimized asset shipped with this deployment instead.
-  if (pathname.endsWith("/assets/logo.png")) return "/assets/logo.webp";
+  if (pathname.endsWith("/assets/logo.png") || pathname.endsWith("/assets/logo.webp")) return "/assets/logo-64.webp";
   if (text.startsWith("/") && !text.startsWith("//")) return text;
   const url = safeWebUrl(text);
   if (url) {
     try {
-      if (new URL(url).pathname.toLowerCase().endsWith("/assets/logo.png")) return "/assets/logo.webp";
+      if (["/assets/logo.png", "/assets/logo.webp"].includes(new URL(url).pathname.toLowerCase())) return "/assets/logo-64.webp";
     } catch {}
   }
-  return url || "/assets/logo.webp";
+  return url || "/assets/logo-64.webp";
 }
 
 export default function Footer({ lang, cats, settings }: FooterProps) {
@@ -99,13 +96,7 @@ export default function Footer({ lang, cats, settings }: FooterProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-16">
           {/* Brand */}
           <div className="lg:col-span-2">
-            <motion.div
-              className="flex items-center gap-3 mb-6"
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={viewportOnce}
-              transition={{ duration: 0.6 }}
-            >
+            <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl overflow-hidden">
                 <img src={logoUrl} alt={companyName} className="w-full h-full object-contain" />
               </div>
@@ -115,51 +106,27 @@ export default function Footer({ lang, cats, settings }: FooterProps) {
                   {companyTagline}
                 </div>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.h3
-              className="font-display text-2xl lg:text-3xl font-medium tracking-tight text-ink-0 mb-4"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={viewportOnce}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
+            <h3 className="font-display text-2xl lg:text-3xl font-medium tracking-tight text-ink-0 mb-4">
               {footerHeadline}
               <br />
               <span className="bg-grad-text-light dark:bg-grad-text bg-clip-text text-transparent">
                 {footerAccent}
               </span>
-            </motion.h3>
+            </h3>
 
-            <motion.p
-              className="text-sm text-ink-3 leading-relaxed max-w-md"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={viewportOnce}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
+            <p className="text-sm text-ink-3 leading-relaxed max-w-md">
               {footerDescription}
-            </motion.p>
+            </p>
 
             {/* Only show social profiles that are configured with valid http(s) URLs. */}
             {socialLinks.length > 0 && (
               <div className="flex gap-2 mt-6">
                 {socialLinks.map(({ label, href }, i) => (
-                  <motion.a
-                    key={href}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={label === "in" ? "LinkedIn" : label === "X" ? "X" : "GitHub"}
-                    className="w-9 h-9 grid place-items-center rounded-lg border border-violet-500/20 bg-violet-500/5 text-ink-3 hover:text-violet-300 hover:border-violet-500/40 transition-colors font-mono text-xs"
-                    whileHover={{ y: -3 }}
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={viewportOnce}
-                    transition={{ delay: 0.3 + i * 0.05 }}
-                  >
+                  <a key={href} href={href} target="_blank" rel="noopener noreferrer" aria-label={label === "in" ? "LinkedIn" : label === "X" ? "X" : "GitHub"} className="w-9 h-9 grid place-items-center rounded-lg border border-violet-500/20 bg-violet-500/5 text-ink-3 hover:text-violet-300 hover:border-violet-500/40 transition-colors font-mono text-xs">
                     {label}
-                  </motion.a>
+                  </a>
                 ))}
               </div>
             )}
@@ -178,13 +145,7 @@ export default function Footer({ lang, cats, settings }: FooterProps) {
                   label: lang === "ar" ? item.labelAr : item.labelEn,
                 })),
               ].map((item, i) => (
-                <motion.li
-                  key={item.href}
-                  initial={{ opacity: 0, x: ar ? 12 : -12 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={viewportOnce}
-                  transition={{ delay: i * 0.04 }}
-                >
+                <li key={item.href}>
                   <Link
                     href={item.href}
                     className="text-sm text-ink-3 hover:text-ink-0 transition-colors inline-flex items-center gap-1 group"
@@ -192,7 +153,7 @@ export default function Footer({ lang, cats, settings }: FooterProps) {
                     <span className="w-0 group-hover:w-3 h-px bg-mint-400 transition-all duration-300" />
                     {item.label}
                   </Link>
-                </motion.li>
+                </li>
               ))}
             </ul>
           </div>

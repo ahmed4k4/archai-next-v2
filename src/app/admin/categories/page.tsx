@@ -38,23 +38,32 @@ export default function CategoriesAdmin() {
   const [msg, setMsg] = useState("");
 
   async function refreshPublic() {
-    const session = (await sb.auth.getSession()).data.session;
-    await fetch("/api/revalidate", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${session?.access_token || ""}` },
-    });
+    try {
+      const session = (await sb.auth.getSession()).data.session;
+      const response = await fetch("/api/revalidate", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token || ""}` },
+      });
+      if (!response.ok) setMsg(ar ? "تم حفظ القسم، لكن لم يتم تحديث الكاش تلقائيًا." : "Category saved, but automatic cache revalidation failed.");
+    } catch {
+      setMsg(ar ? "تم حفظ القسم، لكن لم يتم تحديث الكاش تلقائيًا." : "Category saved, but automatic cache revalidation failed.");
+    }
   }
 
   async function load() {
-    const { data, error } = await sb
-      .from("categories")
-      .select("*")
-      .order("sort_order");
-    if (error) {
-      setMsg(error.message);
-      return;
+    try {
+      const { data, error } = await sb
+        .from("categories")
+        .select("*")
+        .order("sort_order");
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+      setItems(data || []);
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : (ar ? "تعذر تحميل الأقسام." : "Could not load categories."));
     }
-    setItems(data || []);
   }
 
   useEffect(() => {
@@ -63,29 +72,38 @@ export default function CategoriesAdmin() {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const payload = { ...form, sort_order: Number(form.sort_order) || 0 };
-    const r = edit
-      ? await sb.from("categories").update(payload).eq("id", edit)
-      : await sb.from("categories").insert(payload);
-    if (r.error) {
-      setMsg(r.error.message);
-      return;
+    try {
+      const payload = { ...form, sort_order: Number(form.sort_order) || 0 };
+      const r = edit
+        ? await sb.from("categories").update(payload).eq("id", edit)
+        : await sb.from("categories").insert(payload);
+      if (r.error) {
+        setMsg(r.error.message);
+        return;
+      }
+      setMsg(ar ? "تم الحفظ." : "Saved.");
+      setShow(false);
+      setEdit(null);
+      setForm(empty);
+      await refreshPublic();
+      await load();
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : (ar ? "تعذر حفظ القسم." : "Could not save category."));
     }
-    setMsg(ar ? "تم الحفظ." : "Saved.");
-    setShow(false);
-    setEdit(null);
-    setForm(empty);
-    await refreshPublic();
-    await load();
   }
 
   async function del(id: string) {
     if (!confirm(ar ? "حذف القسم؟" : "Delete this category?")) return;
-    const r = await sb.from("categories").delete().eq("id", id);
-    if (r.error) setMsg(r.error.message);
-    else {
-      await refreshPublic();
-      await load();
+    try {
+      const r = await sb.from("categories").delete().eq("id", id);
+      if (r.error) setMsg(r.error.message);
+      else {
+        setMsg(ar ? "تم حذف القسم." : "Category deleted.");
+        await refreshPublic();
+        await load();
+      }
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : (ar ? "تعذر حذف القسم." : "Could not delete category."));
     }
   }
 

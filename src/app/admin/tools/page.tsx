@@ -17,6 +17,8 @@ import {
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useAdminI18n } from "@/components/admin/AdminI18n";
 
+type Row = Record<string, any>;
+
 type Stats = {
   projects: number;
   published: number;
@@ -38,28 +40,49 @@ export default function AdminTools() {
     missingCover: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      sb.from("projects").select("status,summary_ar,summary_en,cover_image"),
-      sb.from("categories").select("id"),
-    ]).then(([p, c]) => {
-      const rows = p.data || [];
-      setStats({
-        projects: rows.length,
-        published: rows.filter((x: any) => x.status === "published").length,
-        categories: c.data?.length || 0,
-        missingSummary: rows.filter(
-          (x: any) =>
-            x.status === "published" && (!x.summary_en || !x.summary_ar)
-        ).length,
-        missingCover: rows.filter(
-          (x: any) => x.status === "published" && !x.cover_image
-        ).length,
-      });
-      setLoading(false);
-    });
-  }, [sb]);
+    let live = true;
+    const load = async () => {
+      try {
+        const [p, c, mediaModern] = await Promise.all([
+          sb.from("projects").select("id,status,summary_ar,summary_en,cover_image,featured_image,hero_image"),
+          sb.from("categories").select("id"),
+          sb.from("project_images").select("project_id,public_url,role,is_cover,is_hero,is_featured"),
+        ]);
+        if (!live) return;
+        const requestError = p.error || c.error;
+        if (requestError) {
+          setLoadError(requestError.message);
+          return;
+        }
+        let mediaRows: Row[] = mediaModern.error ? [] : ((mediaModern.data || []) as Row[]);
+        if (mediaModern.error) {
+          const mediaLegacy = await sb.from("project_images").select("project_id,public_url,is_cover,is_hero,is_featured");
+          if (!mediaLegacy.error) mediaRows = (mediaLegacy.data || []).map((image: any) => ({ ...image, role: null }));
+          else setLoadError((current) => current || mediaLegacy.error!.message);
+        }
+        const mediaProjectIds = new Set(mediaRows
+          .filter((image: any) => typeof image.public_url === "string" && image.public_url.trim())
+          .map((image: any) => String(image.project_id)));
+        const rows = p.data || [];
+        setStats({
+          projects: rows.length,
+          published: rows.filter((x: any) => x.status === "published").length,
+          categories: c.data?.length || 0,
+          missingSummary: rows.filter((x: any) => x.status === "published" && (!x.summary_en || !x.summary_ar)).length,
+          missingCover: rows.filter((x: any) => x.status === "published" && !(x.cover_image || x.featured_image || x.hero_image || mediaProjectIds.has(String(x.id)))).length,
+        });
+      } catch (error) {
+        if (live) setLoadError(error instanceof Error ? error.message : (ar ? "تعذر فحص بيانات الموقع." : "Could not inspect website data."));
+      } finally {
+        if (live) setLoading(false);
+      }
+    };
+    void load();
+    return () => { live = false; };
+  }, [sb, ar]);
 
   const check = (
     ok: boolean,
@@ -154,6 +177,8 @@ export default function AdminTools() {
         </div>
       </div>
 
+      {loadError && <div className="admin-error" role="alert">{ar ? "تعذر فحص البيانات، لذلك لن تُعرض النتائج كأنها سليمة: " : "Data audit failed; results are not reported as healthy: "}{loadError}</div>}
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {cards.map((c, i) => {
@@ -204,7 +229,7 @@ export default function AdminTools() {
               : `${stats.published} published out of ${stats.projects} total projects.`
           )}
           {check(
-            stats.missingSummary === 0,
+            !loading && !loadError && stats.missingSummary === 0,
             ar ? "الملخصات ثنائية اللغة" : "Bilingual summaries",
             ar
               ? `${stats.missingSummary} مشروع يحتاج استكمال ملخص.`
@@ -212,7 +237,7 @@ export default function AdminTools() {
             stats.missingSummary > 0 ? "/admin/projects" : undefined
           )}
           {check(
-            stats.missingCover === 0,
+            !loading && !loadError && stats.missingCover === 0,
             ar ? "صور المشاريع" : "Project cover images",
             ar
               ? `${stats.missingCover} مشروع بدون صورة غلاف.`

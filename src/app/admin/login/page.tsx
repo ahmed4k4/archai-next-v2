@@ -2,7 +2,7 @@
 
 import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Eye, EyeOff, Shield } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 
@@ -17,6 +17,7 @@ export default function AdminLogin() {
 function LoginForm() {
   const sb = supabaseBrowser();
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const qs = useSearchParams();
 
   const [email, setEmail] = useState("");
@@ -31,6 +32,8 @@ function LoginForm() {
     let active = true;
     sb.auth.getSession().then(({ data }) => {
       if (active && data.session) router.replace("/admin");
+    }).catch((error) => {
+      if (process.env.NODE_ENV !== "production") console.error("[admin-login] session check failed", error);
     });
     return () => {
       active = false;
@@ -41,32 +44,36 @@ function LoginForm() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    try {
+      const { error: authError } = await sb.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-    const { error: authError } = await sb.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+      if (authError) {
+        const msg = authError.message || "Login failed.";
+        if (msg === "Invalid login credentials")
+          setError("بيانات الدخول غير صحيحة. تأكد أن المستخدم موجود في Supabase → Authentication → Users.");
+        else if (msg.toLowerCase().includes("email not confirmed"))
+          setError("البريد الإلكتروني غير مؤكد. افتح Supabase وأكّد البريد.");
+        else setError(`${msg}${authError.code ? ` (${authError.code})` : ""}`);
+        return;
+      }
 
-    if (authError) {
-      const msg = authError.message || "Login failed.";
-      if (msg === "Invalid login credentials")
-        setError(
-          "بيانات الدخول غير صحيحة. تأكد أن المستخدم موجود في Supabase → Authentication → Users."
-        );
-      else if (msg.toLowerCase().includes("email not confirmed"))
-        setError("البريد الإلكتروني غير مؤكد. افتح Supabase وأكّد البريد.");
-      else setError(`${msg}${authError.code ? ` (${authError.code})` : ""}`);
+      router.replace("/admin");
+      router.refresh();
+    } catch (requestError) {
+      setError(requestError instanceof Error
+        ? requestError.message
+        : "تعذر الاتصال بخدمة تسجيل الدخول. تحقق من الإنترنت وإعدادات Supabase.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.replace("/admin");
-    router.refresh();
   }
 
   return (
     <main
-      className="relative min-h-screen overflow-hidden bg-void-900 flex items-center justify-center p-6"
+      className="admin-login-surface relative min-h-screen overflow-hidden bg-void-900 flex items-center justify-center p-6"
       dir="rtl"
     >
       {/* Background layers */}
@@ -74,22 +81,23 @@ function LoginForm() {
       <motion.div
         className="absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full blur-[140px] opacity-25"
         style={{ background: "radial-gradient(circle, #7c5cff 0%, transparent 70%)" }}
-        animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+        animate={reduceMotion ? undefined : { x: [0, 40, 0], y: [0, -30, 0] }}
+        transition={reduceMotion ? { duration: 0 } : { duration: 18, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
         className="absolute bottom-[-20%] left-[-10%] w-[55vw] h-[55vw] rounded-full blur-[140px] opacity-20"
         style={{ background: "radial-gradient(circle, #4ce2d0 0%, transparent 70%)" }}
-        animate={{ x: [0, -40, 0], y: [0, 30, 0] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+        animate={reduceMotion ? undefined : { x: [0, -40, 0], y: [0, 30, 0] }}
+        transition={reduceMotion ? { duration: 0 } : { duration: 22, repeat: Infinity, ease: "easeInOut" }}
       />
 
       <div className="relative w-full max-w-md">
         {/* Brand line */}
         <motion.div
           className="flex items-center justify-between mb-8"
-          initial={{ opacity: 0, y: -20 }}
+          initial={reduceMotion ? false : { opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={reduceMotion ? { duration: 0 } : { duration: 0.35 }}
         >
           <div className="flex items-center gap-3">
             <img
@@ -104,8 +112,8 @@ function LoginForm() {
           <div className="flex items-center gap-2 text-mint-400 text-[10px] font-mono tracking-widest">
             <motion.span
               className="w-1.5 h-1.5 rounded-full bg-mint-400"
-              animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
-              transition={{ duration: 1.8, repeat: Infinity }}
+              animate={reduceMotion ? undefined : { scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 1.8, repeat: Infinity }}
             />
             SECURE ACCESS
           </div>
@@ -115,9 +123,9 @@ function LoginForm() {
         <motion.form
           onSubmit={submit}
           className="relative p-8 rounded-3xl border border-violet-500/25 bg-void-800/85 backdrop-blur-2xl shadow-[0_40px_100px_rgba(0,0,0,0.5)] overflow-hidden"
-          initial={{ opacity: 0, y: 30 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.1 }}
+          transition={reduceMotion ? { duration: 0 } : { duration: 0.45, delay: 0.06 }}
         >
           {/* Corner glow */}
           <div className="absolute top-0 right-0 w-40 h-40 bg-violet-500/20 blur-3xl rounded-full pointer-events-none" />

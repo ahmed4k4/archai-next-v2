@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Archai Solutions — Software, AI & Digital Product Engineering";
+export const alt = "Archai Integrated Systems — Software, AI & Digital Product Engineering";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const runtime = "edge";
@@ -78,7 +78,7 @@ export default function OpenGraphImage() {
           >
             A
           </div>
-          ARCHAI SOLUTIONS
+          ARCHAI INTEGRATED SYSTEMS
         </div>
 
         {/* Main content */}

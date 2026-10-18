@@ -60,20 +60,22 @@ export default function ProjectsAdmin() {
   const handledEditQuery = useRef<string | null>(null);
   async function load() {
     setLoading(true);
-    const [{ data: p, error: pe }, { data: c, error: ce }] = await Promise.all([
-      sb
-        .from("projects")
-        .select(
-          "*,project_technologies(technology),project_industries(industry)",
-        )
-        .order("sort_order")
-        .order("created_at", { ascending: false }),
-      sb.from("categories").select("id,name_ar,name_en").order("sort_order"),
-    ]);
-    if (pe || ce) setMsg((pe || ce)?.message || t("errorLoad"));
-    setItems((p || []) as Project[]);
-    setCats((c || []) as Category[]);
-    setLoading(false);
+    try {
+      const [{ data: p, error: pe }, { data: c, error: ce }] = await Promise.all([
+        sb.from("projects")
+          .select("*,project_technologies(technology),project_industries(industry)")
+          .order("sort_order")
+          .order("created_at", { ascending: false }),
+        sb.from("categories").select("id,name_ar,name_en").order("sort_order"),
+      ]);
+      if (pe || ce) setMsg((pe || ce)?.message || t("errorLoad"));
+      setItems((p || []) as Project[]);
+      setCats((c || []) as Category[]);
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : t("errorLoad"));
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => {
     load();
@@ -178,6 +180,7 @@ export default function ProjectsAdmin() {
     e.preventDefault();
     setBusy(true);
     setMsg("");
+    try {
     const payload = {
       slug: form.slug.trim(),
       category_id: form.category_id || null,
@@ -258,27 +261,39 @@ export default function ProjectsAdmin() {
     setShow(false);
     setEditing(null);
     await load();
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : (locale === "ar" ? "تعذر حفظ المشروع." : "Could not save project."));
+    } finally {
+      setBusy(false);
+    }
   }
   async function remove(id: string) {
     if (!confirm(t("confirmDelete"))) return;
-    const { error } = await sb.from("projects").delete().eq("id", id);
-    if (error) {
-      setMsg(error.message);
-      return;
+    try {
+      const { error } = await sb.from("projects").delete().eq("id", id);
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+      await revalidate();
+      setMsg(locale === "ar" ? "تم حذف المشروع." : "Project deleted.");
+      await load();
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : (locale === "ar" ? "تعذر حذف المشروع." : "Could not delete project."));
     }
-    await revalidate();
-    await load();
   }
   async function toggle(p: Project) {
     const next = p.status === "published" ? "draft" : "published";
-    const { error } = await sb
-      .from("projects")
-      .update({ status: next })
-      .eq("id", p.id);
-    if (error) setMsg(error.message);
-    else {
-      await revalidate();
-      await load();
+    try {
+      const { error } = await sb.from("projects").update({ status: next }).eq("id", p.id);
+      if (error) setMsg(error.message);
+      else {
+        await revalidate();
+        setMsg(locale === "ar" ? "تم تحديث حالة النشر." : "Publishing status updated.");
+        await load();
+      }
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : (locale === "ar" ? "تعذر تحديث حالة النشر." : "Could not update publishing status."));
     }
   }
   function exportCsv() {

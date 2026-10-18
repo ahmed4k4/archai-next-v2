@@ -1,37 +1,42 @@
 "use client";
 
-import { motion, useAnimationControls, useReducedMotion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { VisualPreloadContext } from "@/components/visuals/VisualPreloadContext";
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
-const CLICK_WATCHDOG_MS = 1_000;
-const ROUTE_WATCHDOG_MS = 1_700;
-const MIN_REVEAL_MS = 180;
-const ENTER_MS = 180;
-const VISIBLE_VISUAL_SELECTOR = ".route-content [data-visual-instance]";
+const prefersReducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+const CLICK_WATCHDOG_MS = 12_000;
+const ROUTE_WATCHDOG_MS = 45_000;
+const MIN_REVEAL_MS = 320;
+const ROUTE_VISUAL_SELECTOR = ".route-content [data-lazy-visual]";
 
 type VisualReadyDetail = { route?: string; instanceId?: string; status?: "ready" | "error" };
 
 /**
- * Starts the transition on the user's click (not after the server has returned the new
- * pathname), then reveals the destination as soon as its content, critical images, and
- * above-the-fold 3D scene are ready. Below-the-fold scenes remain lazy to protect mobile GPUs.
+ * Starts the transition on click and keeps the curtain covering the incoming route until
+ * its fonts, critical images, finite entrance animations, and every on-page visual slot have
+ * settled. On desktop, the incoming route's WebGL scenes are prepared serially under the
+ * curtain. Infinite ambient animations are intentionally not treated as unfinished work.
  */
 export default function RouteTransition({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isArabicRoute = pathname?.startsWith("/ar");
-  const reducedMotion = useReducedMotion();
-  const controls = useAnimationControls();
   const previousPath = useRef<string | null>(null);
-  const transitionActive = useRef(false);
+  const monitoredRoute = useRef<string | null>(null);
+  // Render the intro curtain in the server HTML so it is visible from the first paint,
+  // instead of waiting for hydration before showing the opening animation.
+  const transitionActive = useRef(true);
   const transitionId = useRef(0);
   const transitionStartedAt = useRef(0);
   const watchdog = useRef<number | null>(null);
   const finishRef = useRef<() => void>(() => undefined);
-  const [showCurtain, setShowCurtain] = useState(false);
-  const [preloadVisuals, setPreloadVisuals] = useState(false);
+  const [showCurtain, setShowCurtain] = useState(true);
+  const [curtainPhase, setCurtainPhase] = useState<"ready" | "cover" | "exit" | "hidden">("cover");
+  const [preloadVisuals, setPreloadVisuals] = useState(true);
+  const [initialIntro, setInitialIntro] = useState(true);
+  const curtainFrame = useRef<number | null>(null);
+  const curtainTimer = useRef<number | null>(null);
 
   const finishTransition = useCallback(() => {
     if (!transitionActive.current) return;
@@ -40,48 +45,52 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
       window.clearTimeout(watchdog.current);
       watchdog.current = null;
     }
+    if (curtainFrame.current !== null) {
+      window.cancelAnimationFrame(curtainFrame.current);
+      curtainFrame.current = null;
+    }
     const finishedId = transitionId.current;
-    controls.stop();
-    controls.start({
-      y: "-105%",
-      opacity: 1,
-      transition: { duration: 0.26, ease: [0.76, 0, 0.24, 1] },
-    }).then(() => {
+    setInitialIntro(false);
+    setCurtainPhase("exit");
+    if (curtainTimer.current !== null) window.clearTimeout(curtainTimer.current);
+    curtainTimer.current = window.setTimeout(() => {
       if (transitionId.current !== finishedId) return;
       setShowCurtain(false);
+      setCurtainPhase("hidden");
       setPreloadVisuals(false);
-    }, () => {
-      if (transitionId.current !== finishedId) return;
-      setShowCurtain(false);
-      setPreloadVisuals(false);
-    });
-  }, [controls]);
+      curtainTimer.current = null;
+    }, 290);
+  }, []);
 
   const beginTransition = useCallback(() => {
-    if (reducedMotion || (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)) {
+    if (prefersReducedMotion()) {
       setShowCurtain(false);
+      setCurtainPhase("hidden");
       setPreloadVisuals(false);
+      setInitialIntro(false);
+      transitionActive.current = false;
       return;
     }
     const id = ++transitionId.current;
+    setInitialIntro(false);
     transitionActive.current = true;
     transitionStartedAt.current = performance.now();
     setShowCurtain(true);
+    setCurtainPhase("ready");
     setPreloadVisuals(false);
     if (watchdog.current !== null) window.clearTimeout(watchdog.current);
-    controls.stop();
-    controls.set({ y: "100%", opacity: 1 });
-    requestAnimationFrame(() => {
-      if (transitionId.current !== id || !transitionActive.current) return;
-      controls.start({
-        y: "0%",
-        opacity: 1,
-        transition: { duration: ENTER_MS / 1000, ease: [0.2, 0.8, 0.2, 1] },
+    if (curtainTimer.current !== null) window.clearTimeout(curtainTimer.current);
+    if (curtainFrame.current !== null) window.cancelAnimationFrame(curtainFrame.current);
+    // A second frame lets the curtain's off-screen transform paint before its CSS transition.
+    curtainFrame.current = window.requestAnimationFrame(() => {
+      curtainFrame.current = window.requestAnimationFrame(() => {
+        curtainFrame.current = null;
+        if (transitionId.current === id && transitionActive.current) setCurtainPhase("cover");
       });
     });
-    // A failed route request or a WebGL failure can never leave an overlay stuck forever.
+    // Route requests or client errors must never leave the transition overlay stuck.
     watchdog.current = window.setTimeout(() => finishRef.current(), CLICK_WATCHDOG_MS);
-  }, [controls, reducedMotion]);
+  }, []);
 
   useEffect(() => {
     finishRef.current = finishTransition;
@@ -90,7 +99,7 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
   // Capture intent before Next.js starts its asynchronous route request. Do not prevent the
   // click or call router.push here: the actual anchor/Next Link remains the navigation owner.
   useEffect(() => {
-    if (reducedMotion) return;
+    if (prefersReducedMotion()) return;
     const onDocumentClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       if (!(event.target instanceof Element)) return;
@@ -122,26 +131,47 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
       document.removeEventListener("click", onDocumentClick, true);
       window.removeEventListener("archai:navigation-intent", onProgrammaticIntent as EventListener);
     };
-  }, [beginTransition, reducedMotion]);
+  }, [beginTransition]);
 
   useIsomorphicLayoutEffect(() => {
     if (!pathname) return;
     const previous = previousPath.current;
+    const isInitialLoad = previous === null;
     previousPath.current = pathname;
-    // A direct page load should render normally; route transitions are for actual navigation.
-    if (previous === null || previous === pathname) return;
 
-    if (reducedMotion || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    // React Strict Mode replays effects in development. Re-arm the readiness watcher when
+    // the first setup was cleaned up, but do not restart an already watched route.
+    if (!isInitialLoad && previous === pathname &&
+        (!transitionActive.current || monitoredRoute.current === pathname)) return;
+
+    if (prefersReducedMotion()) {
       transitionActive.current = false;
+      if (watchdog.current !== null) {
+        window.clearTimeout(watchdog.current);
+        watchdog.current = null;
+      }
       setShowCurtain(false);
+      setCurtainPhase("hidden");
       setPreloadVisuals(false);
+      setInitialIntro(false);
       return;
     }
 
-    if (!transitionActive.current) beginTransition();
-    // The click animation is already moving. Once Next confirms the destination, give its
-    // server content and critical images a fresh readiness window; 3D cannot hold the route.
-    // The short click watchdog only applies if navigation never starts at all.
+    if (isInitialLoad) {
+      // The server-rendered intro is already covering the page. Start its readiness clock
+      // on hydration and prepare the initial route visuals just like an in-app destination.
+      transitionActive.current = true;
+      transitionStartedAt.current = performance.now();
+      setShowCurtain(true);
+      setCurtainPhase("cover");
+      setPreloadVisuals(true);
+    } else if (!transitionActive.current) {
+      beginTransition();
+    }
+    monitoredRoute.current = pathname;
+    // The click animation is already moving. Once Next confirms the destination, keep the
+    // curtain covering the page while its images, fonts, entrance animations, and visuals settle.
+    // A long watchdog remains only as a failsafe for a broken/failed scene or route request.
     if (watchdog.current !== null) window.clearTimeout(watchdog.current);
     watchdog.current = window.setTimeout(() => finishRef.current(), ROUTE_WATCHDOG_MS);
     setPreloadVisuals(true);
@@ -156,10 +186,6 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
       const style = window.getComputedStyle(element);
       return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
     };
-    const inViewport = (element: HTMLElement) => {
-      const rect = element.getBoundingClientRect();
-      return rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
-    };
     const criticalImages = () => {
       const content = root();
       if (!content) return [] as HTMLImageElement[];
@@ -169,10 +195,33 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
         return visible || image.fetchPriority === "high";
       });
     };
-    const visibleVisuals = () => {
+    const routeVisuals = () => {
       const content = root();
       if (!content) return [] as HTMLElement[];
-      return Array.from(content.querySelectorAll<HTMLElement>(VISIBLE_VISUAL_SELECTOR)).filter((visual) => hasLayout(visual) && inViewport(visual));
+      return Array.from(content.querySelectorAll<HTMLElement>(ROUTE_VISUAL_SELECTOR));
+    };
+    const visualsReady = () => routeVisuals().every((visual) => {
+      // Display:none tabs/menus are not part of the active experience. Lightweight CSS
+      // scenes are already rendered and ready; WebGL scenes must signal their first frame.
+      if (!hasLayout(visual)) return true;
+      // CSS is the intentional final visual on constrained/mobile devices. On capable
+      // desktops, wait for LazyVisual to confirm capability and then for a WebGL first frame.
+      if (visual.dataset.visualCapability === "css") return true;
+      if (visual.dataset.visualCapability !== "webgl") return false;
+      return visual.dataset.visualReady === "ready" || visual.dataset.visualReady === "error";
+    });
+    const finiteAnimationsReady = () => {
+      const content = root();
+      if (!content || typeof content.getAnimations !== "function") return true;
+      return content.getAnimations({ subtree: true }).every((animation) => {
+        // Infinite ambient loops (or user-paused animations) should never block navigation.
+        if (animation.playState !== "running" && !animation.pending) return true;
+        const timing = animation.effect?.getComputedTiming();
+        if (!timing || timing.iterations === Infinity || !Number.isFinite(timing.endTime)) return true;
+        const endTimeMs = Number(timing.endTime);
+        if (!Number.isFinite(endTimeMs)) return true;
+        return Number(animation.currentTime ?? 0) >= endTimeMs;
+      });
     };
     const pageReady = () => {
       const content = root();
@@ -182,9 +231,6 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
       // routes are accepted once their rendered DOM is present and no loading boundary remains.
       return Boolean(content.querySelector('[data-route-ready="true"]')) || content.children.length > 0;
     };
-    const visualsReady = () => visibleVisuals().every((visual) =>
-      visual.dataset.visualReady === "ready" || visual.dataset.visualReady === "error"
-    );
     const device = navigator as Navigator & { deviceMemory?: number };
     const lightweightDevice = window.matchMedia("(max-width: 767px), (pointer: coarse)").matches ||
       (navigator.hardwareConcurrency || 8) <= 4 ||
@@ -194,10 +240,12 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
       const elapsed = performance.now() - transitionStartedAt.current;
       if (elapsed < MIN_REVEAL_MS || !pageReady()) return false;
       const imagesReady = criticalImages().every((image) => image.complete);
-      // A CSS placeholder is already visible. WebGL is intentionally optional so route
-      // navigation and rendering can finish without waiting for GPU compilation.
-      const visualsReadyOrTimedOut = lightweightDevice || visualsReady() || elapsed >= 700;
-      return (imagesReady && visualsReadyOrTimedOut) || elapsed >= 1_050;
+      const fontsReady = !document.fonts || document.fonts.status === "loaded";
+      const animationReady = finiteAnimationsReady();
+      // Mobile keeps the designed CSS scene instead of compiling WebGL. Desktop waits for
+      // every mounted destination scene to report a first frame or a handled fallback error.
+      const deviceVisualsReady = lightweightDevice || visualsReady();
+      return imagesReady && fontsReady && animationReady && deviceVisualsReady;
     };
     const checkReady = () => {
       if (disposed || !transitionActive.current) return;
@@ -223,9 +271,8 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
         image.addEventListener("error", done, { once: true });
       });
 
-      // Deliberately do not fetch WebGL chunks during navigation. The destination has
-      // an immediate CSS placeholder; loading Three.js here would contend with layout,
-      // images, and the navigation animation on slower computers.
+      // LazyVisual watches the preload context and serially prepares the destination's
+      // laid-out visual scenes while this curtain keeps the incomplete page covered.
       checkReady();
     };
     const onVisualReady = (event: Event) => {
@@ -241,13 +288,14 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["data-visual-ready", "aria-busy", "data-route-ready"],
+      attributeFilter: ["data-visual-ready", "data-visual-mode", "data-visual-capability", "aria-busy", "data-route-ready"],
     });
     const fontPromise = document.fonts?.ready;
     if (fontPromise) void fontPromise.then(checkReady).catch(checkReady);
 
     return () => {
       disposed = true;
+      if (monitoredRoute.current === pathname) monitoredRoute.current = null;
       window.removeEventListener("archai:visual-ready", onVisualReady as EventListener);
       observer?.disconnect();
       imageListeners.forEach((handler, image) => {
@@ -256,32 +304,23 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
       });
       window.clearTimeout(revealTimer);
     };
-  }, [pathname, beginTransition, reducedMotion]);
+  }, [pathname, beginTransition]);
 
   useEffect(() => () => {
     if (watchdog.current !== null) window.clearTimeout(watchdog.current);
-    controls.stop();
-  }, [controls]);
+    if (curtainFrame.current !== null) window.cancelAnimationFrame(curtainFrame.current);
+    if (curtainTimer.current !== null) window.clearTimeout(curtainTimer.current);
+  }, []);
 
   return (
     <VisualPreloadContext.Provider value={preloadVisuals}>
       <>
-        <motion.div
-          className="route-content"
-          key={pathname}
-          // Do not SSR the actual route hidden while hydration / client JS boots. The curtain
-          // already supplies the navigation animation; direct visits should paint immediately.
-          initial={false}
-          animate={{ opacity: 1, y: 0 }}
-          transition={reducedMotion ? { duration: 0 } : { duration: 0.16, ease: [0.2, 0.75, 0.25, 1] }}
-        >
+        <div className="route-content" key={pathname}>
           {children}
-        </motion.div>
-        {showCurtain && !reducedMotion ? (
-          <motion.div
-            className="route-transition-curtain"
-            initial={{ y: "100%", opacity: 1 }}
-            animate={controls}
+        </div>
+        {showCurtain ? (
+          <div
+            className={`route-transition-curtain ${curtainPhase === "cover" ? "is-cover" : ""} ${curtainPhase === "exit" ? "is-exit" : ""} ${initialIntro ? "is-initial" : ""}`}
             aria-hidden="true"
           >
             <div className="route-transition-stage">
@@ -294,10 +333,10 @@ export default function RouteTransition({ children }: { children: ReactNode }) {
               </div>
               <span className="route-transition-wordmark">ARCHAI</span>
               <span className="route-transition-label">{isArabicRoute ? "حلول رقمية تُبنى بهدف" : "DIGITAL SYSTEMS · BUILT WITH INTENT"}</span>
-              <span className="route-transition-status"><i /> {isArabicRoute ? "جاري تجهيز الصفحة" : "PREPARING EXPERIENCE"}</span>
+              <span className="route-transition-status"><i /> {isArabicRoute ? "جاري تجهيز الصفحة والمجسمات" : "PREPARING PAGE & 3D VISUALS"}</span>
             </div>
             <span className="route-transition-line" />
-          </motion.div>
+          </div>
         ) : null}
       </>
     </VisualPreloadContext.Provider>

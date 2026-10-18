@@ -42,7 +42,7 @@ export default function HeroParticles() {
       // Keep the hero constellation decorative rather than CPU-bound; this
       // renderer performs neighbour checks on the main thread every frame.
       const count =
-        window.innerWidth < 640 ? 44 : window.innerWidth < 1024 ? 76 : 112;
+        window.innerWidth < 640 ? 32 : window.innerWidth < 1024 ? 52 : 72;
 
       particles = Array.from({ length: count }, (_, i) => {
         const y = 1 - (i / (count - 1)) * 2;
@@ -65,9 +65,9 @@ export default function HeroParticles() {
         running = false;
         return;
       }
-      // A restrained 30 fps is enough for a decorative constellation and cuts work
-      // on the main thread without affecting content interaction.
-      if (lastDrawTime && time - lastDrawTime < 1000 / 30) {
+      // Decorative only: cap work to 18 fps and keep the number of neighbour checks low.
+      // This leaves the main thread available for navigation, input, and project filtering.
+      if (lastDrawTime && time - lastDrawTime < 1000 / 18) {
         frame = requestAnimationFrame(draw);
         return;
       }
